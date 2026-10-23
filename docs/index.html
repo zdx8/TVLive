@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>电视直播 TVLive — Android TV IPTV 播放器</title>
+<meta name="description" content="Android TV 上的 IPTV 播放器：M3U 订阅、手机扫码添加、遥控器全键盘操作、应用内自更新。约 4.4 MB，Apache 2.0 开源。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="logo">电视直播</div>
+    <h1>TVLive <span class="en">for Android TV</span></h1>
+    <p class="tagline">M3U 订阅 · 手机扫码添加 · 遥控器全键盘操作 · 应用内自更新<br>
+    整个应用只有约 <strong>4.4 MB</strong>，开源（Apache-2.0）。</p>
+    <p class="cta">
+      <a class="btn primary" href="https://github.com/zdx8/TVLive/releases/latest">下载最新版 APK</a>
+      <a class="btn ghost" href="https://github.com/zdx8/TVLive">GitHub 仓库</a>
+    </p>
+    <p class="meta">Android TV 6.0+（兼容 TV 13 / 14 / 15 / 16）· 签名 release · 免ROOT</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>功能</h2>
+    <div class="grid">
+      <div class="card"><h3>📱 手机扫码添加订阅</h3>
+        <p>电视亮出二维码，手机扫码打开网页，填上订阅名称和 M3U 地址一键提交。局域网内直连，数据不出家门。</p></div>
+      <div class="card"><h3>📋 多订阅管理</h3>
+        <p>MENU 菜单里切换、删除订阅，当前订阅一目了然；订阅名可手填，也能从订阅源内容自动识别。</p></div>
+      <div class="card"><h3>🔄 应用内自更新</h3>
+        <p>MENU →「检查更新」手动触发，不后台轮询。有新版弹卡片，确认后自动下载并交给系统安装器。</p></div>
+      <div class="card"><h3>🎮 为遥控器而生</h3>
+        <p>D-pad 上下静默切台、左键召唤频道列表、数字键直接跳台、长按 OK 收藏——全程不碰鼠标键盘。</p></div>
+      <div class="card"><h3>🛡 播放可靠性</h3>
+        <p>自动重连退避（1s/2s/4s）、15 秒无进度看门狗、连续失败自动跳台；订阅刷新原地合并，不丢收藏和历史。</p></div>
+      <div class="card"><h3>🪶 轻量纯净</h3>
+        <p>约 4.4 MB 的单一 APK，Media3/ExoPlayer 内核（Apache-2.0），无广告、无追踪、不需要任何权限之外的网络访问。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>三步开始</h2>
+    <ol class="steps">
+      <li><strong>安装</strong>：下载 APK，用 U 盘或 <code>adb install</code> 装到电视。</li>
+      <li><strong>添加订阅</strong>：首次打开自动进入添加页——手机扫电视上的二维码，填订阅名称和 M3U 地址。</li>
+      <li><strong>看电视</strong>：提交后自动刷新频道并开始播放；以后打开 app 就是直接看电视。</li>
+    </ol>
+    <p class="note">需要你自己已有 IPTV 订阅地址（M3U 格式）。TVLive 是播放器，不提供任何频道内容。</p>
+  </section>
+
+  <section>
+    <h2>遥控器键位</h2>
+    <table>
+      <tr><th>按键</th><th>频道列表收起时</th><th>频道列表展开时</th></tr>
+      <tr><td>OK / 中心</td><td>播放 / 暂停</td><td>选台</td></tr>
+      <tr><td>← 左</td><td>召唤频道列表</td><td>收起列表</td></tr>
+      <tr><td>↑ ↓</td><td>切换频道</td><td>移动高亮（画面不变）</td></tr>
+      <tr><td>→ 右</td><td>切换频道</td><td>移动高亮</td></tr>
+      <tr><td>返回</td><td>退出确认</td><td>收起列表</td></tr>
+      <tr><td>数字 0-9</td><td colspan="2">跳到第 N 个频道（1-2-3 → 第 123 个）</td></tr>
+      <tr><td>长按 OK</td><td colspan="2">收藏 / 取消收藏当前频道</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>常见问题</h2>
+    <div class="faq">
+      <h3>订阅地址从哪里来？</h3>
+      <p>TVLive 播放标准的 M3U / M3U8 播放列表。你需要有自己的 IPTV 订阅地址（运营商、自建或第三方提供），app 负责播放，不内置、不推荐任何内容源。</p>
+      <h3>扫码添加会泄露我的订阅吗？</h3>
+      <p>不会。二维码指向电视在局域网内的临时网页（一次性 token、5 分钟过期），提交直连电视，数据不经过任何第三方服务器。</p>
+      <h3>为什么检查更新失败？</h3>
+      <p>更新清单托管在 GitHub Releases，国内网络访问时通时断。检查失败只提示「已是最新」，随时可以手动到 Releases 页下载。</p>
+      <h3>能装在非电视的 Android 设备上吗？</h3>
+      <p>可以安装，但界面按 TV 遥控器设计（leanback），触屏设备体验不作保证。</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/zdx8/TVLive">GitHub</a> ·
+    <a href="https://github.com/zdx8/TVLive/releases/latest">下载</a> ·
+    <a href="https://github.com/zdx8/TVLive/blob/main/LICENSE">Apache-2.0</a> ·
+    播放引擎 <a href="https://github.com/androidx/media">Media3 / ExoPlayer</a>
+  </div>
+</footer>
+
+</body>
+</html>

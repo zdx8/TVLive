@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>电视直播 · 添加订阅</title>
+<style>
+body{font-family:-apple-system,"PingFang SC",sans-serif;background:#f5f2ec;margin:0;padding:36px 20px}
+.card{max-width:480px;margin:0 auto;background:#fff;border-radius:16px;padding:28px 26px}
+h1{font-size:20px;font-weight:600;margin:0 0 6px;color:#1a1a1a}
+p{color:#6b6b6b;font-size:14px;line-height:1.6;margin:0 0 18px}
+input{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:16px;outline:none}
+#name{margin-bottom:10px}
+input:focus{border-color:#FF8200}
+button{width:100%;margin-top:14px;padding:13px;border:0;border-radius:8px;background:#FF8200;color:#fff;font-size:16px;font-weight:500}
+button:disabled{opacity:.5}
+.msg{margin-top:12px;font-size:14px;display:none;line-height:1.5}
+.ok{color:#2a7a2a}.err{color:#c03535}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>添加订阅到电视</h1>
+  <p>给订阅起个名字，再粘贴 M3U 地址，提交后电视会自动刷新频道列表并开始播放。</p>
+  <form id="f">
+    <input id="name" type="text" placeholder="订阅名称（如：央视 / 家里的源）" autocomplete="off">
+    <input id="url" type="url" inputmode="url" placeholder="https://example.com/playlist.m3u" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="go" type="submit">提交到电视</button>
+    <div id="msg" class="msg"></div>
+  </form>
+</div>
+<script>
+var TOKEN = "__TOKEN__";
+var f = document.getElementById('f');
+var u = document.getElementById('url');
+var n = document.getElementById('name');
+var b = document.getElementById('go');
+var m = document.getElementById('msg');
+function show(text, cls) { m.className = 'msg ' + cls; m.textContent = text; }
+f.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var v = u.value.trim();
+  var nm = n.value.trim();
+  if (!v) { show('请先粘贴订阅地址', 'err'); return; }
+  b.disabled = true;
+  fetch('/submit?t=' + encodeURIComponent(TOKEN), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'url=' + encodeURIComponent(v) + '&name=' + encodeURIComponent(nm)
+  }).then(function (r) {
+    return r.text().then(function (t) { return [r.status, t]; });
+  }).then(function (res) {
+    if (res[0] === 200) {
+      show('已发送到电视，回到电视上查看效果。', 'ok');
+      u.value = ''; n.value = '';
+    } else {
+      show(res[1] || '提交失败', 'err');
+      b.disabled = false;
+    }
+  }).catch(function () {
+    show('网络错误，请确认手机与电视在同一网络', 'err');
+    b.disabled = false;
+  });
+});
+</script>
+</body>
+</html>

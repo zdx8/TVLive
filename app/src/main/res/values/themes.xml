@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Base theme for TVLive.
+        We start from android:Theme.Material.Light.NoActionBar (a
+        *framework* theme) rather than Theme.AppCompat, because:
+          1. AppCompat themes require a full palette of attributes
+             (colorPrimary, colorPrimaryDark, colorAccent, etc.) to
+             be declared. On a stock-Light setup the AppCompat
+             delegate crashes with Resources$NotFoundException when
+             one of them is missing.
+          2. Some Chinese OEM Android TV boxes ship a buggy
+             AppCompat resource overlay that throws on inflate.
+        We use a plain Material dark theme and draw our own colors
+        in code (see MainActivity / activity_main.xml). AppCompat
+        1.6.1 is still on the classpath for the FragmentActivity +
+        AlertDialog helpers, but we don't apply it as a theme.
+    -->
+    <style name="Theme.TVLive" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/surface_dark</item>
+        <item name="android:colorBackground">@color/surface_dark</item>
+    </style>
+
+    <!-- Playback theme: hide system UI for immersive fullscreen. -->
+    <style name="Theme.TVLive.Playback" parent="Theme.TVLive">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

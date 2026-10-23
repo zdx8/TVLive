@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Channel drawer overlay. Inflated by ChannelDrawer.kt into
+    R.id.drawer_host, which sits on top of the video surface.
+
+    NOTE ON WIDTH: the root width below is MATCH_PARENT, but
+    ChannelDrawer.setup() replaces the LayoutParams at inflate time with
+    DRAWER_WIDTH_FRACTION of the screen width (~30%). A FrameLayout
+    cannot express a percentage in XML, and the drawer must cover only
+    the left third so the right two thirds keep playing the video
+    uninterrupted. Do not rely on the XML width.
+
+    Background is #E6111822 — 90% opaque, so the video underneath is
+    just visible. Enough opacity to keep the channel names legible on
+    top of bright footage.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#E6111822"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/drawer_title"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="8dp" />
+
+    <ListView
+        android:id="@+id/drawer_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="#33FFFFFF"
+        android:dividerHeight="1dp"
+        android:listSelector="@android:color/transparent"
+        android:cacheColorHint="#00000000"
+        android:scrollbars="vertical" />
+
+</LinearLayout>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">电视直播</string>
+    <string name="menu_play_now">▶  立即播放</string>
+    <string name="menu_add_favorite">★  收藏</string>
+    <string name="menu_remove_favorite">☆  取消收藏</string>
+    <string name="drawer_title">频道</string>
+</resources>

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- TVLive — IPTV player for Android TV 13 -->
+
+    <!-- Required: this is a TV app, must declare leanback feature -->
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+
+    <!-- TVs have no touchscreen; don't require it -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <!-- Network: streaming obviously needs internet -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- 自更新：下载完 APK 后交给系统安装器（仍需用户按一次「安装」） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- For wake-up of network during streaming -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Media library: local video files. API 33 uses scoped media. -->
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_VIDEO"
+        tools:ignore="SelectedPhotoAccess" />
+
+    <application
+        android:name=".TvLiveApp"
+        android:allowBackup="true"
+        android:banner="@drawable/app_banner"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.TVLive"
+        android:usesCleartextTraffic="true">
+
+
+        <!-- 频道列表。由主页磁贴启动，不再对外暴露 launcher 入口。 -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTask" />
+
+        <!-- 全屏播放 —— 同时也是 LAUNCHER：打开应用即开始播放，
+             没有单独的主页壳。无 Intent extra 时自己从订阅取第一个频道。 -->
+        <activity
+            android:name=".player.PlaybackActivity"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.TVLive.Playback">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 扫码填入订阅：电视亮二维码，手机浏览器粘贴提交。 -->
+        <activity
+            android:name=".pairing.PairingActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!--
+            MediaSessionService — exposes the player to the system
+            so the OS can show lock-screen / Quick Settings / TV media
+            notifications and the remote's play/pause/seek keys keep
+            working when the activity is in the background.
+
+            android:foregroundServiceType="mediaPlayback" is
+            required on Android 14+ (compileSdk 34+) — without it
+            startForeground() throws ForegroundServiceTypeException.
+        -->
+        <!-- 自更新：把 cacheDir 里的 APK 以 content:// 交给系统安装器 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <service
+            android:name=".player.PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>

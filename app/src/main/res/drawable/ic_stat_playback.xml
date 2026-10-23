@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Status-bar / notification small icon.
+
+    Android renders a notification's small icon as a *mask*: only the
+    alpha channel survives and the colour is replaced by the system
+    (normally white). So this must be a white silhouette on a fully
+    transparent background — a colour bitmap such as app_banner.png
+    would render as a featureless white blob.
+
+    Shape: a rounded screen outline with a filled play triangle, which
+    stays legible down to the 18dp the status bar allots. Vector, so
+    there is no density-bucket duplication.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Screen outline -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M3,4.5h18c0.83,0 1.5,0.67 1.5,1.5v10c0,0.83 -0.67,1.5 -1.5,1.5H3c-0.83,0 -1.5,-0.67 -1.5,-1.5V6c0,-0.83 0.67,-1.5 1.5,-1.5z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.2" />
+
+    <!-- Play triangle -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10,8.2l5.8,3.4 -5.8,3.4z" />
+</vector>

@@ -1,0 +1,22 @@
+#EXTM3U
+# Sample M3U playlist for TVLive M2 development.
+# Mirrors the structure of typical IPTV subscriptions: mixed groups,
+# logos, tvg-id, and a few real public test streams.
+
+#EXTINF:-1 tvg-id="BBCOne.uk" tvg-name="BBC One" tvg-logo="https://i.imgur.com/4F9qEDx.png" group-title="UK",BBC One
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+
+#EXTINF:-1 tvg-id="CNN.us" tvg-name="CNN" tvg-logo="https://i.imgur.com/3vQu6yY.png" group-title="US",CNN
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+
+#EXTINF:-1 tvg-id="NHK.jp" tvg-name="NHK World" tvg-logo="https://i.imgur.com/placeholder.png" group-title="International",NHK World
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+
+#EXTINF:-1 tvg-id="Mux.test" tvg-name="Mux test (HLS)" tvg-logo="https://i.imgur.com/placeholder.png" group-title="Test",Mux test HLS
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+
+#EXTINF:-1 tvg-name="Local test" group-title="Local",Local fallback stream
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+
+#EXTINF:-1 tvg-id="NoGroup" tvg-name="No-group channel" ,No-group channel
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8

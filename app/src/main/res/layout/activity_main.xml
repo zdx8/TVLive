@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    TVLive home screen — minimal "channel list + play" layout.
+    No category sidebar; the M3 BrowseSupportFragment adds that
+    when we want a richer UI.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#101418"
+    android:padding="48dp">
+
+    <!-- Header row: app name on the left, Reload button on the right. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/header"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFF"
+            android:textSize="48sp"
+            android:textStyle="bold"
+            android:text="@string/app_name" />
+
+        <Button
+            android:id="@+id/update_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:text="⤓ 检查更新"
+            android:textSize="18sp"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="12dp"
+            android:focusable="true" />
+
+        <Button
+            android:id="@+id/reload_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⟳ 刷新订阅"
+            android:textSize="20sp"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="12dp"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- Status line: shows loading / error / channel count. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="24dp">
+
+        <ProgressBar
+            android:id="@+id/progress"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#9CA3AF"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+    <!-- Channel list. Fills the remaining vertical space. -->
+    <ListView
+        android:id="@+id/channel_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="#1F2937"
+        android:dividerHeight="1dp"
+        android:listSelector="@android:color/transparent"
+        android:cacheColorHint="#00000000"
+        android:scrollbars="vertical" />
+
+    <!-- Number-buffer indicator. Shown when the user is typing a
+         channel index with the numeric keypad; auto-hides after 1.5s. -->
+    <TextView
+        android:id="@+id/number_buffer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:padding="12dp"
+        android:background="#CC1976D2"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+</LinearLayout>

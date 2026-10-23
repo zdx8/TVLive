@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    扫码填入订阅：全屏页。中央二维码 + 明文 URL 兜底 + 两个按钮
+    （手动输入 / 取消）。视觉沿用退出确认框的深底卡片语言。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#B3000000"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="48dp">
+
+    <TextView
+        android:id="@+id/pairing_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="手机扫一扫，添加订阅"
+        android:textColor="#FFFFFF"
+        android:textSize="26sp" />
+
+    <TextView
+        android:id="@+id/pairing_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="确保手机与电视在同一网络；扫描下方二维码，在网页里粘贴订阅地址"
+        android:textColor="#9C97A6"
+        android:textSize="15sp" />
+
+    <ImageView
+        android:id="@+id/pairing_qr"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_marginTop="24dp"
+        android:background="#FFFFFF"
+        android:contentDescription="订阅地址二维码"
+        android:padding="10dp" />
+
+    <TextView
+        android:id="@+id/pairing_url"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:ellipsize="middle"
+        android:maxLines="1"
+        android:textColor="#6E6A78"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="26dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/btn_manual"
+            android:layout_width="180dp"
+            android:layout_height="56dp"
+            android:background="@drawable/dialog_menu_item_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:text="手动输入"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/btn_cancel"
+            android:layout_width="180dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="20dp"
+            android:background="@drawable/dialog_menu_item_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:text="取消"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+    </LinearLayout>
+</LinearLayout>

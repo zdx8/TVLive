@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!--
+        Video surface. Created once, lives for the entire activity
+        lifetime — we do not swap it (mirrors the iTelly-macOS
+        "VLCCAOpenGLLayer cannot be re-parented mid-flight" rule).
+        focusable=false so it never steals D-pad focus from the
+        channel drawer (otherwise a focusable SurfaceView behind
+        the drawer can intercept DPAD_CENTER / ENTER on some
+        Android TV builds and our onKeyDown never sees it).
+    -->
+    <SurfaceView
+        android:id="@+id/surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="false"
+        android:focusableInTouchMode="false" />
+
+    <!-- Error overlay (visible only on error). -->
+    <TextView
+        android:id="@+id/error_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:padding="32dp"
+        android:background="#CC000000"
+        android:textColor="#FF6B6B"
+        android:textSize="20sp"
+        android:visibility="gone" />
+
+    <!--
+        Diagnostic panel: when a stream fails to parse, we probe the
+        URL via [StreamDiagnoser] and render the server's response
+        here. Otherwise invisible. Long-press the debug_view to open
+        this on demand; press BACK to dismiss.
+    -->
+    <ScrollView
+        android:id="@+id/diagnose_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6111822"
+        android:padding="16dp"
+        android:scrollbars="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/diagnose_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#E0E0E0"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </ScrollView>
+
+    <!--
+        Channel drawer host. Inflated by ChannelDrawer.kt with
+        R.layout.view_channel_drawer. Starts `invisible` (not
+        `gone`) so the ListView inside measures and lays out its
+        children on the very first frame — important so the
+        "currently playing" row's blue highlight is painted
+        from the start. The user can't see it because `invisible`
+        hides the contents. When the user presses LEFT, the host
+        flips to `visible` and the highlight is already there.
+    -->
+    <FrameLayout
+        android:id="@+id/drawer_host"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible" />
+
+</FrameLayout>
