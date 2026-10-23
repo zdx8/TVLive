@@ -1,11 +1,11 @@
-/* 电视直播 TVLive 官网 — 暗色 TV 风，品牌绿 #27BF84（取自 logo），零外部依赖 */
+/* 电视直播 TVLive 官网 — 暗色 TV 风，品牌蓝 #275CBF（同 tv-banner 色相，取自新 logo），零外部依赖 */
 :root {
   --bg: #12141a;
   --card: #1a1d26;
   --line: #2a2e3a;
   --text: #e8e6ef;
   --muted: #9c97a6;
-  --brand: #27bf84;
+  --brand: #275cbf;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -21,11 +21,11 @@ a:hover { text-decoration: underline; }
 .hero {
   text-align: center;
   padding: 88px 24px 64px;
-  background: radial-gradient(ellipse at 50% -20%, #122a20 0%, var(--bg) 62%);
+  background: radial-gradient(ellipse at 50% -20%, #0d1830 0%, var(--bg) 62%);
 }
 .logo-img {
   width: 96px; height: 96px; border-radius: 22px; margin-bottom: 20px;
-  box-shadow: 0 8px 28px rgba(39, 191, 132, 0.28);
+  box-shadow: 0 8px 28px rgba(39, 92, 191, 0.28);
 }
 .logo {
   display: inline-block; padding: 10px 26px; border-radius: 999px;
@@ -42,7 +42,7 @@ h1 .en { font-size: 22px; color: var(--muted); font-weight: 400; margin-left: 10
   border-radius: 10px; font-size: 16px; font-weight: 500;
 }
 .btn.primary { background: var(--brand); color: #fff; }
-.btn.primary:hover { background: #46d69e; text-decoration: none; }
+.btn.primary:hover { background: #4a80e0; text-decoration: none; }
 .btn.ghost { border: 1px solid var(--line); color: var(--text); }
 .btn.ghost:hover { border-color: var(--muted); text-decoration: none; }
 .meta { color: #8a937f; font-size: 13px; }
