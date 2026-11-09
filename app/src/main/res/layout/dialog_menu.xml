@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    播放页 MENU 菜单：订阅管理 + 检查更新。
+    结构（自上而下）：
+      「订阅」区块标题
+      「＋ 添加订阅」按钮（进扫码页）
+      订阅行列表（代码按 SubscriptionStore 动态插入，当前项打 ✓，
+                 行尾 ✕ 删除；名字由 PlaylistNamer 从订阅源自动获取）
+      「⤓ 检查更新」按钮
+    半透明卡片，与退出框、更新框同一套视觉语言。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="420dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/dialog_exit_bg"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="14dp"
+        android:text="订阅"
+        android:textColor="#9C97A6"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/menu_add"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/dialog_menu_item_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="＋   添加订阅"
+        android:textColor="#FF8200"
+        android:textSize="20sp" />
+
+    <!-- 订阅行由代码按 SubscriptionStore 动态插入（只显示名称，当前项 ✓）。
+         订阅可能多于屏幕：限高 ScrollView，D-pad 焦点移动自动滚动。 -->
+    <com.tvlive.tv.widget.MaxHeightScrollView
+        android:id="@+id/menu_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:id="@+id/menu_items"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </com.tvlive.tv.widget.MaxHeightScrollView>
+
+    <!-- 列表为空时的占位提示（代码控制可见性） -->
+    <TextView
+        android:id="@+id/menu_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="10dp"
+        android:text="还没有订阅，点上面「添加订阅」"
+        android:textColor="#6E6A78"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/menu_update"
+        android:layout_marginTop="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@drawable/dialog_menu_item_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="⤓   检查更新"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp" />
+</LinearLayout>

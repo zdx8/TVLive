@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>电视直播 TVLive 图标</title>
+  <rect width="256" height="256" rx="56" fill="#0346CA"/>
+  <g stroke="#fff" stroke-width="14" stroke-linecap="round" fill="none">
+    <path d="M104 76 L82 38"/>
+    <path d="M152 76 L174 38"/>
+  </g>
+  <rect x="44" y="72" width="168" height="138" rx="26" fill="#fff"/>
+  <text x="128" y="142" text-anchor="middle" dominant-baseline="central"
+        font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
+        font-size="62" font-weight="800" fill="#0346CA" letter-spacing="3">TV</text>
+</svg>

@@ -1,0 +1,18 @@
+TVLive
+Copyright 2025 TVLive contributors
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+================================================================================
+Third-party notices
+================================================================================
+
+This project includes the following third-party software. The corresponding
+licenses are reproduced in full in THIRD-PARTY-LICENSES.
+
+  - AndroidX Leanback, Fragment, Activity, Core (Apache 2.0)
+  - Google Material Components for Android (Apache 2.0)
+  - Media3 / ExoPlayer 1.4.x (Apache 2.0)
+  - Kotlin / JetBrains (Apache 2.0)
+  - kotlinx.coroutines (Apache 2.0)

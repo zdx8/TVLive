@@ -1,0 +1,54 @@
+# --- Gradle ---
+.gradle/
+build/
+local.properties
+.kotlin/
+captures/
+.cxx/
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+*.tmp
+*~
+
+# --- Logs / crash dumps ---
+*.log
+*.hprof
+hs_err_pid*.log
+out.log
+err.log
+
+# --- Project-specific (don't commit) ---
+# Fake SDK with build-tools / platform-34 + build-tools 35
+fake-sdk/
+app/release/
+# Release keystore + credentials — must NEVER be committed.
+# Use the `keystore.properties.example` file as a template and copy
+# it to `keystore.properties` on your local machine.
+app/signing/*.keystore
+app/signing/*.jks
+keystore.properties
+# Local build environment (absolute paths to the machine's JDK/SDK).
+# The committed template is .env.sh.example — never this file.
+.env.sh
+# Generated APK artifacts — uploaded by CI as release assets.
+*.apk
+!docs/**/*.apk
+# keep sample assets staged under assets/ but ignore generated cache
+app/build/
+# IDE tool caches
+.workbuddy/
+
+# 自更新产物（清单 + APK），由 scripts/make_update_manifest.py 生成，不上传仓库
+dist/
+
+# 私有包订阅注入目录（作者本地；仅 -PprivateSubs=true 构建时挂载，仓库与公开包永不包含）
+app/assets-private/
