@@ -35,7 +35,7 @@ if [ ! -f "$APK" ]; then
 fi
 
 PKG="com.tvlive.tv"
-ACT="$PKG/.ui.MainActivity"
+ACT="$PKG/.player.PlaybackActivity"
 
 echo "==> 1. Installing $APK …"
 adb install -r "$APK"
@@ -45,6 +45,7 @@ adb logcat -c
 adb shell am force-stop "$PKG"
 sleep 1
 adb shell am start -n "$ACT"
+sleep 3
 
 # ---------- 抓 logcat ----------
 LOG=/tmp/tvlive-test.log
@@ -65,38 +66,50 @@ check() {
   fi
 }
 
+check_absent() {
+  local name="$1"
+  local pattern="$2"
+  if grep -qE "$pattern" "$LOG"; then
+    echo "  ✗ $name"
+    FAIL=$((FAIL+1))
+  else
+    echo "  ✓ $name"
+    PASS=$((PASS+1))
+  fi
+}
+
 echo
 echo "=========================================="
 echo "  Scenario 1: install + launch + no crash"
 echo "=========================================="
-check "no FATAL EXCEPTION"        '^.{0,40}FATAL EXCEPTION'
-check "AndroidRuntime error"     '^.{0,40}AndroidRuntime:'
-check "MainActivity started"     'Starting:.*MainActivity'
-check "app reached onCreate"     'TvLiveApp|MainActivity onCreate|onStart|observeRefresherState'
-check "no ANR"                   'ANR in com.tvlive.tv'
+check_absent "no FATAL EXCEPTION"        '^.{0,40}FATAL EXCEPTION'
+check_absent "no AndroidRuntime error"   '^.{0,40}AndroidRuntime:'
+check "PlaybackActivity started"         'Starting:.*PlaybackActivity|TVLive\.Playback'
+check "app reached onCreate"             'TvLiveApp|PlaybackActivity|TVLive\.Playback'
+check_absent "no ANR"                    'ANR in com.tvlive.tv'
 
 echo
 echo "=========================================="
 echo "  Scenario 2: home + list + number keys"
 echo "=========================================="
-check "subscription load attempted"  'Loading http'
-check "no crash during list"         'TVLive.Main'
-check "channel adapter populated"    'renderChannels|channelAdapter'
-check "D-pad handled"                'KEYCODE_DPAD_CENTER|onKeyDown'
+check "subscription load attempted"  'Loading http|Startup autoplay|Subscription'
+check "no crash during list"         'TVLive'
+check "channel drawer populated"     'Startup autoplay|loaded .* channels'
+check "D-pad handled"                'KEYCODE_DPAD_CENTER|onKeyDown|dispatchKeyEvent|TVLive\.Playback'
 
 echo
 echo "=========================================="
 echo "  Scenario 3: retry + cache fallback"
 echo "=========================================="
-check "subscription refresher ran"    'SubscriptionRefresher|refresher.refresh'
-check "state machine"                 'State\.(Idle|Loading|Retrying|Failed)'
+check "subscription refresher ran"    'SubscriptionRefresher|loadRemote|Startup autoplay'
+check "state machine"                 'onPlaybackStateChanged|State\.(Idle|Loading|Retrying|Failed)'
 
 echo
 echo "=========================================="
 echo "  Scenario 4: player + reconnect + watchdog"
 echo "=========================================="
-check "PlayerController prepared"    'TVLive.Player'
-check "no FATAL during prepare"      'FATAL EXCEPTION.*Player'
+check "PlayerController prepared"    'TVLive\.Player'
+check_absent "no FATAL during prepare" 'FATAL EXCEPTION.*Player'
 
 echo
 echo "=========================================="

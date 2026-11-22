@@ -8,11 +8,13 @@ The Apache Software Foundation (http://www.apache.org/).
 Third-party notices
 ================================================================================
 
-This project includes the following third-party software. The corresponding
-licenses are reproduced in full in THIRD-PARTY-LICENSES.
+This project includes the following third-party software, each licensed under
+the Apache License, Version 2.0 (see LICENSE):
 
   - AndroidX Leanback, Fragment, Activity, Core (Apache 2.0)
+  - AndroidX Room 2.7.0 (Apache 2.0)
   - Google Material Components for Android (Apache 2.0)
-  - Media3 / ExoPlayer 1.4.x (Apache 2.0)
+  - Media3 / ExoPlayer 1.7.0 (Apache 2.0)
+  - ZXing Core 3.5.3 (Apache 2.0)
   - Kotlin / JetBrains (Apache 2.0)
-  - kotlinx.coroutines (Apache 2.0)
+  - kotlinx.coroutines & kotlinx.serialization (Apache 2.0)

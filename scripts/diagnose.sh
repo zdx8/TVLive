@@ -33,8 +33,8 @@ adb install -r "$APK"
 
 # Clear logcat then start the activity
 adb logcat -c
-echo "==> Launching MainActivity (offline assertions will print in logcat)…"
-adb shell am start -n com.tvlive.tv/.ui.MainActivity
+echo "==> Launching PlaybackActivity (offline assertions will print in logcat)…"
+adb shell am start -n com.tvlive.tv/.player.PlaybackActivity
 sleep 3
 
 # Capture logcat

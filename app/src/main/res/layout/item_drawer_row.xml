@@ -1,37 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Single row in the drawer list. Same look as the home-screen
-    channel row, but condensed for the narrow 30% drawer width.
-    Background state list is in res/drawable/drawer_row_background.xml.
+    Single row in the drawer list. Shows channel name, optional group,
+    and current EPG program subtitle when EPG data is available.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
+    android:orientation="vertical"
     android:paddingHorizontal="16dp"
-    android:paddingVertical="14dp"
+    android:paddingVertical="12dp"
     android:background="@drawable/drawer_row_background"
     android:focusable="true"
     android:clickable="true">
 
-    <TextView
-        android:id="@+id/drawer_row_name"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textColor="#FFFFFF"
-        android:textSize="20sp"
-        android:singleLine="true"
-        android:ellipsize="end" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/drawer_row_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/drawer_row_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#B0BEC5"
+            android:textSize="14sp"
+            android:layout_marginStart="8dp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/drawer_row_group"
-        android:layout_width="wrap_content"
+        android:id="@+id/drawer_row_epg"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#B0BEC5"
-        android:textSize="14sp"
-        android:layout_marginStart="8dp"
+        android:layout_marginTop="2dp"
+        android:textColor="#90CAF9"
+        android:textSize="13sp"
+        android:singleLine="true"
+        android:ellipsize="end"
         android:visibility="gone" />
 
 </LinearLayout>

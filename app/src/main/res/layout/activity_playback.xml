@@ -74,4 +74,78 @@
         android:layout_height="match_parent"
         android:visibility="invisible" />
 
+    <!-- Bottom EPG info bar: auto-shown briefly on channel switch or INFO key -->
+    <LinearLayout
+        android:id="@+id/epg_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="40dp"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/dialog_exit_bg"
+        android:orientation="vertical"
+        android:paddingHorizontal="28dp"
+        android:paddingVertical="18dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/epg_channel_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFF"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/epg_now_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:fontFamily="monospace"
+                android:textColor="#B0BEC5"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/epg_now_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="#FF8200"
+            android:textSize="19sp"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <ProgressBar
+            android:id="@+id/epg_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="8dp"
+            android:max="100"
+            android:progressTint="#FF8200"
+            android:progressBackgroundTint="#33FFFFFF"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/epg_next_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="#B0BEC5"
+            android:textSize="15sp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:visibility="gone" />
+    </LinearLayout>
+
 </FrameLayout>

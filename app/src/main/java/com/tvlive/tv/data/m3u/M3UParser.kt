@@ -60,13 +60,18 @@ class M3UParser {
         // object so the "reset on URL line" rule is one line.
         val state = PendingState()
         val channels = mutableListOf<Channel>()
+        val epgUrls = mutableListOf<String>()
 
         for (rawLine in text.lineSequence()) {
             val line = rawLine.trim()
             if (line.isEmpty()) continue
 
             if (line.startsWith("#")) {
-                handleDirective(line, state)
+                if (line.startsWith("#EXTM3U", ignoreCase = true)) {
+                    epgUrls += parseHeaderEpgUrls(line)
+                } else {
+                    handleDirective(line, state)
+                }
                 continue
             }
 
@@ -78,7 +83,8 @@ class M3UParser {
 
         return ParsedPlaylist(
             channels = channels,
-            suggestedName = "导入的播放列表"
+            suggestedName = "导入的播放列表",
+            epgUrls = epgUrls.distinct()
         )
     }
 
@@ -155,7 +161,22 @@ class M3UParser {
             return
         }
 
-        // #EXTM3U / #PLAYLIST / other unknown directives: ignore
+        // #PLAYLIST / other unknown directives: ignore
+    }
+
+    /**
+     * 从 `#EXTM3U` 头部提取 `url-tvg` / `x-tvg-url` 节目单地址（支持逗号分隔多地址）。
+     */
+    internal fun parseHeaderEpgUrls(headerLine: String): List<String> {
+        val attrs = parseExtInf(headerLine).attributes
+        val raw = listOfNotNull(attrs["url-tvg"], attrs["x-tvg-url"])
+        if (raw.isEmpty()) return emptyList()
+        return raw.flatMap { it.split(',') }
+            .map { it.trim() }
+            .filter { u ->
+                val l = u.lowercase()
+                l.startsWith("http://") || l.startsWith("https://")
+            }
     }
 
     /**

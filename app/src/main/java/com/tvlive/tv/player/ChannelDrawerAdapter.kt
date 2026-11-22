@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.TextView
 import com.tvlive.tv.R
+import com.tvlive.tv.data.epg.EpgIndex
 import com.tvlive.tv.data.model.ChannelEntity
 
 /**
@@ -27,6 +28,12 @@ class ChannelDrawerAdapter(
 
     private val items = mutableListOf<ChannelEntity>()
     private var currentIndex: Int = -1
+    private var epgIndex: EpgIndex = EpgIndex.EMPTY
+
+    fun setEpgIndex(index: EpgIndex) {
+        epgIndex = index
+        notifyDataSetChanged()
+    }
 
     fun submit(newItems: List<ChannelEntity>, currentIndex: Int = this.currentIndex) {
         items.clear()
@@ -68,14 +75,24 @@ class ChannelDrawerAdapter(
             .inflate(R.layout.item_drawer_row, parent, false)
         val name = view.findViewById<TextView>(R.id.drawer_row_name)
         val group = view.findViewById<TextView>(R.id.drawer_row_group)
+        val epgView = view.findViewById<TextView?>(R.id.drawer_row_epg)
         val ch = items[position]
-        name.text = ch.displayName
+        name.text = if (ch.isFavorite) "★ ${ch.displayName}" else ch.displayName
         val groupText = ch.groupTitle?.takeIf { it.isNotBlank() }
         if (groupText != null) {
             group.text = groupText
             group.visibility = View.VISIBLE
         } else {
             group.visibility = View.GONE
+        }
+        if (epgView != null) {
+            val currentProg = if (epgIndex.isEmpty) null else epgIndex.nowNext(ch).current
+            if (currentProg != null) {
+                epgView.text = "${currentProg.startTimeText()} ${currentProg.title}"
+                epgView.visibility = View.VISIBLE
+            } else {
+                epgView.visibility = View.GONE
+            }
         }
         // Drive the "currently playing" highlight via isSelected.
         // The state list in drawer_row_background.xml paints a blue

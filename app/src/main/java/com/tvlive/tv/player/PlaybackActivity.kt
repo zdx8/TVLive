@@ -15,6 +15,8 @@ import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.tvlive.tv.R
+import com.tvlive.tv.data.epg.EpgProgram
+import com.tvlive.tv.data.epg.EpgRepository
 import com.tvlive.tv.data.repository.ChannelRepository
 import com.tvlive.tv.data.store.PlaylistNamer
 import com.tvlive.tv.data.store.SubscriptionStore
@@ -53,7 +55,14 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
     private lateinit var drawer: ChannelDrawer
     private lateinit var diagnoseScroll: android.widget.ScrollView
     private lateinit var diagnoseView: TextView
+    private lateinit var epgBanner: View
+    private lateinit var epgChannelTitle: TextView
+    private lateinit var epgNowTitle: TextView
+    private lateinit var epgNowTime: TextView
+    private lateinit var epgProgress: android.widget.ProgressBar
+    private lateinit var epgNextTitle: TextView
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val hideEpgBannerRunnable = Runnable { epgBanner.visibility = View.GONE }
     private var startedAtMs: Long = 0
 
     /** Full channel list for drawer navigation. */
@@ -96,7 +105,24 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
      * matching ACTION_UP is passed through instead of being treated as
      * "this remote only sends UP" and firing the action a second time.
      */
-    private var centerKeyDownSeen = false
+    private var centerKeyLongPressHandled = false
+    private var menuLongPressHandled = false
+
+    /** 数字键跳台缓冲（1-2-3 → 第 123 个频道）。 */
+    private val numberBuffer = com.tvlive.tv.ui.ChannelIndexBuffer()
+    private val numberJumpRunnable = Runnable {
+        val raw = numberBuffer.current()
+        numberBuffer.clear()
+        val num = raw.toIntOrNull() ?: return@Runnable
+        val targetIndex = num - 1
+        if (targetIndex in allChannels.indices) {
+            drawer.setCurrentIndex(targetIndex)
+            onChannelSelected(allChannels[targetIndex], targetIndex)
+            Toast.makeText(this, "${num}. ${allChannels[targetIndex].displayName}", Toast.LENGTH_SHORT).show()
+        } else if (allChannels.isNotEmpty()) {
+            Toast.makeText(this, "没有第 $num 个频道（共 ${allChannels.size} 个）", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,6 +138,12 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
         errorView   = findViewById(R.id.error_view)
         diagnoseScroll = findViewById(R.id.diagnose_scroll)
         diagnoseView   = findViewById(R.id.diagnose_view)
+        epgBanner       = findViewById(R.id.epg_banner)
+        epgChannelTitle = findViewById(R.id.epg_channel_title)
+        epgNowTitle     = findViewById(R.id.epg_now_title)
+        epgNowTime      = findViewById(R.id.epg_now_time)
+        epgProgress     = findViewById(R.id.epg_progress)
+        epgNextTitle    = findViewById(R.id.epg_next_title)
 
         drawer      = ChannelDrawer(findViewById(R.id.root), this)
         drawer.setup()
@@ -199,6 +231,8 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
                 if (state == PlayerController.PlaybackState.READY) {
                     errorView.visibility = View.GONE
                     consecutiveFailures = 0
+                } else if (state == PlayerController.PlaybackState.RECONNECTING) {
+                    showError("⟳ 画面卡顿，正在自动重连…")
                 }
             }
         }
@@ -246,6 +280,7 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
         mainHandler.removeCallbacks(autoAdvanceRunnable)
         startedAtMs = System.currentTimeMillis()
         controller.play(channel.url, channel.displayName, ChannelOptions.fromJson(channel.optionsJson))
+        showEpgBannerFor(channel, position)
         // Keep the drawer visible — user is still browsing.
         drawer.bumpActivity()
     }
@@ -395,22 +430,45 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
             event.keyCode == KeyEvent.KEYCODE_BUTTON_A ||
             event.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT
 
+        val isMenuKey = event.keyCode == KeyEvent.KEYCODE_MENU
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
+                if (isCenterKey) {
+                    if (event.repeatCount == 0) {
+                        centerKeyLongPressHandled = false
+                    } else if (event.repeatCount == 1 && !centerKeyLongPressHandled) {
+                        centerKeyLongPressHandled = true
+                        toggleFavoriteCurrentChannel()
+                    }
+                    return true
+                }
+                if (isMenuKey) {
+                    if (event.repeatCount == 0) {
+                        menuLongPressHandled = false
+                    } else if (event.repeatCount == 1 && !menuLongPressHandled) {
+                        menuLongPressHandled = true
+                        showDiagnosticFor(controller.currentStreamUrl())
+                    }
+                    return true
+                }
                 val repeatAllowed = event.repeatCount == 0 || isRepeatableKey(event.keyCode)
                 if (repeatAllowed && handleKey(event.keyCode)) {
-                    centerKeyDownSeen = isCenterKey
                     return true
                 }
             }
             KeyEvent.ACTION_UP -> {
-                // Fallback for remotes that never send ACTION_DOWN for
-                // the centre key. Only acts when the matching DOWN was
-                // not already handled, so a well-behaved remote that
-                // sends both does not toggle twice.
-                val actOnUp = isCenterKey && !centerKeyDownSeen
-                centerKeyDownSeen = false
-                if (actOnUp && handleKey(event.keyCode)) return true
+                if (isCenterKey) {
+                    val wasLongPress = centerKeyLongPressHandled
+                    centerKeyLongPressHandled = false
+                    if (!wasLongPress && handleKey(event.keyCode)) return true
+                    return true
+                }
+                if (isMenuKey) {
+                    val wasLongPress = menuLongPressHandled
+                    menuLongPressHandled = false
+                    if (!wasLongPress) showMenu()
+                    return true
+                }
             }
         }
         return super.dispatchKeyEvent(event)
@@ -434,15 +492,62 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
         // Back is special — it has different semantics depending on
         // drawer state. We handle it first.
         if (keyCode == KeyEvent.KEYCODE_BACK) return handleBackKey()
-        // MENU = 选项菜单（刷新订阅源 / 检查更新）。
+        // MENU = 选项菜单（订阅管理 / 节目单 / 检查更新）。
         if (keyCode == KeyEvent.KEYCODE_MENU) {
             showMenu()
+            return true
+        }
+        // GUIDE = 当前频道今日节目单；INFO = 显示底部当前/下一档信息条。
+        if (keyCode == KeyEvent.KEYCODE_GUIDE) {
+            showEpgDialog()
+            return true
+        }
+        if (keyCode == KeyEvent.KEYCODE_INFO || keyCode == KeyEvent.KEYCODE_PROG_BLUE) {
+            allChannels.getOrNull(currentIndex)?.let { showEpgBannerFor(it, currentIndex) }
+            return true
+        }
+        // Number keys (0-9) jump directly to the Nth channel.
+        val digit = keyCodeToDigit(keyCode)
+        if (digit != null) {
+            handleDigitKey(digit)
             return true
         }
         // Media keys are always available (drawer-open or closed).
         if (handleMediaKey(keyCode)) return true
         // Channel navigation. Split for readability.
         return handleNavigationKey(keyCode)
+    }
+
+    private fun keyCodeToDigit(keyCode: Int): Int? = when (keyCode) {
+        in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> keyCode - KeyEvent.KEYCODE_0
+        in KeyEvent.KEYCODE_NUMPAD_0..KeyEvent.KEYCODE_NUMPAD_9 -> keyCode - KeyEvent.KEYCODE_NUMPAD_0
+        else -> null
+    }
+
+    private fun handleDigitKey(digit: Int) {
+        if (allChannels.isEmpty()) return
+        val text = numberBuffer.onDigit(digit) ?: return
+        Toast.makeText(this, "跳转频道 $text", Toast.LENGTH_SHORT).show()
+        mainHandler.removeCallbacks(numberJumpRunnable)
+        mainHandler.postDelayed(numberJumpRunnable, NUMBER_JUMP_DELAY_MS)
+    }
+
+    private fun toggleFavoriteCurrentChannel() {
+        val targetIdx = if (drawer.isShown) drawer.focusedIndex() else currentIndex
+        val ch = allChannels.getOrNull(targetIdx) ?: return
+        val newFav = !ch.isFavorite
+        lifecycleScope.launch {
+            ChannelRepository(applicationContext).setFavorite(ch.id, newFav)
+            if (isFinishing || isDestroyed) return@launch
+            val updated = allChannels.toMutableList()
+            if (targetIdx in updated.indices && updated[targetIdx].id == ch.id) {
+                updated[targetIdx] = ch.copy(isFavorite = newFav)
+                allChannels = updated
+                drawer.submit(allChannels, currentIndex.coerceAtLeast(0))
+            }
+            val label = if (newFav) "已收藏 ★ ${ch.displayName}" else "已取消收藏 ${ch.displayName}"
+            Toast.makeText(this@PlaybackActivity, label, Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**
@@ -507,6 +612,7 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
         // up, BACK dismisses it instead of leaving the activity.
         if (diagnoseScroll.visibility == View.VISIBLE) { hideDiagnostic(); return true }
         if (drawer.isShown) { drawer.hide(); return true }
+        if (epgBanner.visibility == View.VISIBLE) { hideEpgBanner(); return true }
         showExitConfirm()
         return true
     }
@@ -577,6 +683,7 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
                 ?: com.tvlive.tv.AppConfig.DEFAULT_SUBSCRIPTION_URL
             drawer.submit(channels, startIndex)
             onChannelSelected(channels[startIndex], startIndex)
+            loadEpgForPlaylist(pl.remoteUrl ?: pl.localPath)
             Log.i(
                 TAG,
                 "Startup autoplay: ${channels[startIndex].displayName} " +
@@ -611,6 +718,7 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
         scroll.maxHeightPx = (280 * resources.displayMetrics.density).toInt()
         val emptyHint = dialog.findViewById<View>(R.id.menu_empty)
         val addRow = dialog.findViewById<View>(R.id.menu_add)
+        val epgBtn = dialog.findViewById<View>(R.id.menu_epg)
         val update = dialog.findViewById<View>(R.id.menu_update)
         val activeUrl = activeSubscriptionUrl()
         val entries = SubscriptionStore.list(this)
@@ -659,6 +767,11 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
             dialog.dismiss()
             @Suppress("DEPRECATION")
             startActivityForResult(Intent(this, PairingActivity::class.java), REQ_ADD_SUBSCRIPTION)
+        }
+
+        epgBtn.setOnClickListener {
+            dialog.dismiss()
+            showEpgDialog()
         }
 
         update.setOnClickListener {
@@ -786,8 +899,155 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
             currentIndex = startIndex
             drawer.submit(channels, startIndex)
             onChannelSelected(channels[startIndex], startIndex)
+            loadEpgForPlaylist(pl.remoteUrl ?: sub.url)
             Log.i(TAG, "Switched subscription to ${sub.name} (${channels.size} channels)")
         }
+    }
+
+    /** 后台加载当前订阅的 XMLTV 节目单（优先 6 小时缓存），完成后刷新抽屉与信息条。 */
+    private fun loadEpgForPlaylist(
+        playlistKey: String?,
+        forceRefresh: Boolean = false,
+        onDone: ((Result<com.tvlive.tv.data.epg.EpgStats>) -> Unit)? = null
+    ) {
+        lifecycleScope.launch {
+            val result = EpgRepository.loadForPlaylist(applicationContext, playlistKey, forceRefresh)
+            if (isFinishing || isDestroyed) return@launch
+            if (result.isSuccess) {
+                drawer.setEpgIndex(EpgRepository.index())
+                if (epgBanner.visibility == View.VISIBLE) {
+                    allChannels.getOrNull(currentIndex)?.let { showEpgBannerFor(it, currentIndex) }
+                }
+            }
+            onDone?.invoke(result)
+        }
+    }
+
+    /** 切台或按 INFO 键时在底部短暂展示当前频道的「正在播出 + 下一档」。 */
+    private fun showEpgBannerFor(channel: com.tvlive.tv.data.model.ChannelEntity, position: Int) {
+        val favMark = if (channel.isFavorite) "★ " else ""
+        val numPrefix = if (position >= 0) "${position + 1}. " else ""
+        epgChannelTitle.text = "$numPrefix$favMark${channel.displayName}"
+
+        val nowMs = System.currentTimeMillis()
+        val nowNext = EpgRepository.index().nowNext(channel, nowMs)
+        val cur = nowNext.current
+        val next = nowNext.next
+
+        if (cur != null) {
+            epgNowTitle.text = "正在播出：${cur.title}"
+            epgNowTime.text = cur.timeRangeText()
+            epgProgress.progress = (cur.progressAt(nowMs) * 100).toInt()
+            epgProgress.visibility = View.VISIBLE
+        } else {
+            epgNowTitle.text = if (EpgRepository.index().isEmpty) "暂无节目单信息" else "当前时段无节目单"
+            epgNowTime.text = ""
+            epgProgress.visibility = View.GONE
+        }
+
+        if (next != null) {
+            epgNextTitle.text = "下一档：${next.startTimeText()} ${next.title}"
+            epgNextTitle.visibility = View.VISIBLE
+        } else {
+            epgNextTitle.visibility = View.GONE
+        }
+
+        epgBanner.visibility = View.VISIBLE
+        mainHandler.removeCallbacks(hideEpgBannerRunnable)
+        mainHandler.postDelayed(hideEpgBannerRunnable, EPG_BANNER_AUTO_HIDE_MS)
+    }
+
+    private fun hideEpgBanner() {
+        mainHandler.removeCallbacks(hideEpgBannerRunnable)
+        epgBanner.visibility = View.GONE
+    }
+
+    /** 弹出当前频道今日完整节目单（MENU → 节目单 或 遥控器 GUIDE 键）。 */
+    private fun showEpgDialog() {
+        if (isFinishing || isDestroyed) return
+        val ch = allChannels.getOrNull(currentIndex)
+        val dialog = android.app.Dialog(this)
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_epg)
+        dialog.setCanceledOnTouchOutside(true)
+        dialog.window?.apply {
+            setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+            )
+            setDimAmount(0.4f)
+        }
+
+        val titleView = dialog.findViewById<TextView>(R.id.epg_dialog_title)
+        val subtitleView = dialog.findViewById<TextView>(R.id.epg_dialog_subtitle)
+        val listView = dialog.findViewById<android.widget.ListView>(R.id.epg_schedule_list)
+        val emptyHint = dialog.findViewById<TextView>(R.id.epg_empty_hint)
+        val refreshBtn = dialog.findViewById<TextView>(R.id.btn_epg_refresh)
+
+        titleView.text = if (ch != null) "${ch.displayName} · 今日节目单" else "今日节目单"
+
+        fun renderSchedule() {
+            val nowMs = System.currentTimeMillis()
+            val idx = EpgRepository.index()
+            val src = EpgRepository.activeSourceUrl()
+            subtitleView.text = when {
+                src != null -> "来源：${src.substringAfter("://").take(42)}（${idx.channelCount} 频道）"
+                else -> "未检测到 EPG 源（可在 M3U 头部添加 url-tvg 或扫码页填写）"
+            }
+            val items: List<EpgProgram> = if (ch != null) idx.todaySchedule(ch, nowMs) else emptyList()
+            if (items.isEmpty()) {
+                listView.visibility = View.GONE
+                emptyHint.visibility = View.VISIBLE
+                emptyHint.text = if (idx.isEmpty) {
+                    "暂无节目单数据\n请在订阅 M3U 中配置 url-tvg，或在「添加订阅」中填写 EPG 地址"
+                } else {
+                    "当前频道暂无今日节目单"
+                }
+            } else {
+                emptyHint.visibility = View.GONE
+                listView.visibility = View.VISIBLE
+                val liveIdx = items.indexOfFirst { it.isLiveAt(nowMs) }.coerceAtLeast(0)
+                listView.adapter = object : android.widget.BaseAdapter() {
+                    override fun getCount(): Int = items.size
+                    override fun getItem(p: Int): EpgProgram = items[p]
+                    override fun getItemId(p: Int): Long = p.toLong()
+                    override fun getView(p: Int, convertView: View?, parent: android.view.ViewGroup?): View {
+                        val row = convertView ?: layoutInflater.inflate(R.layout.item_epg_row, parent, false)
+                        val prog = items[p]
+                        val live = prog.isLiveAt(nowMs)
+                        row.findViewById<TextView>(R.id.epg_row_time).text = prog.timeRangeText()
+                        row.findViewById<TextView>(R.id.epg_row_title).text = prog.title
+                        row.findViewById<View>(R.id.epg_row_badge).visibility = if (live) View.VISIBLE else View.GONE
+                        row.isSelected = live
+                        return row
+                    }
+                }
+                listView.setSelection(liveIdx)
+            }
+        }
+
+        renderSchedule()
+
+        refreshBtn.setOnClickListener {
+            refreshBtn.isEnabled = false
+            refreshBtn.text = "刷新中…"
+            loadEpgForPlaylist(activeSubscriptionUrl(), forceRefresh = true) { res ->
+                if (!dialog.isShowing) return@loadEpgForPlaylist
+                refreshBtn.isEnabled = true
+                refreshBtn.text = "↻ 刷新"
+                if (res.isSuccess) {
+                    val stats = res.getOrNull()
+                    Toast.makeText(this, "节目单已更新（${stats?.channelCount ?: 0} 频道）", Toast.LENGTH_SHORT).show()
+                    renderSchedule()
+                } else {
+                    Toast.makeText(this, res.exceptionOrNull()?.message ?: "节目单刷新失败", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        dialog.setOnShowListener {
+            if (listView.visibility == View.VISIBLE) listView.requestFocus() else refreshBtn.requestFocus()
+        }
+        dialog.show()
     }
 
     /**
@@ -841,13 +1101,19 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
     override fun onDestroy() {
         super.onDestroy()
         mainHandler.removeCallbacks(autoAdvanceRunnable)
+        mainHandler.removeCallbacks(numberJumpRunnable)
+        mainHandler.removeCallbacks(hideEpgBannerRunnable)
+        numberBuffer.clear()
         drawer.release()
         controller.release()
         val elapsed = (System.currentTimeMillis() - startedAtMs) / 1000
         Log.i(TAG, "PlaybackActivity onDestroy after ${elapsed}s")
     }
 
-    companion object {        /** 连续失败到这个数就停手：继续切只会把上游打得更狠。 */
+    companion object {
+        private const val NUMBER_JUMP_DELAY_MS = 1_200L
+        private const val EPG_BANNER_AUTO_HIDE_MS = 4_500L
+        /** 连续失败到这个数就停手：继续切只会把上游打得更狠。 */
         private const val MAX_STARTUP_FAILURES = 6
         const val EXTRA_STREAM_URL = "com.tvlive.tv.STREAM_URL"
         const val EXTRA_STREAM_TITLE = "com.tvlive.tv.STREAM_TITLE"

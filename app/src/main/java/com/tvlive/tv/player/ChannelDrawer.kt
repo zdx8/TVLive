@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ListView
 import com.tvlive.tv.R
+import com.tvlive.tv.data.epg.EpgIndex
 import com.tvlive.tv.data.model.ChannelEntity
 
 /**
@@ -95,6 +96,10 @@ class ChannelDrawer(
      * Push a new channel list into the drawer. [currentIndex] is
      * the row that should be highlighted (the one currently playing).
      */
+    fun setEpgIndex(index: EpgIndex) {
+        adapter?.setEpgIndex(index)
+    }
+
     fun submit(newChannels: List<ChannelEntity>, currentIndex: Int) {
         this.channels = newChannels
         this.currentIndex = currentIndex

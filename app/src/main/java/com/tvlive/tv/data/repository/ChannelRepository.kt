@@ -2,6 +2,7 @@ package com.tvlive.tv.data.repository
 
 import android.content.Context
 import com.tvlive.tv.AppConfig
+import com.tvlive.tv.data.epg.EpgRepository
 import com.tvlive.tv.data.m3u.M3UParser
 import com.tvlive.tv.data.model.ChannelEntity
 import com.tvlive.tv.data.model.NaturalSortKey
@@ -13,6 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -73,10 +77,12 @@ class ChannelRepository(
                         groupTitle = ch.groupTitle,
                         tvgId = ch.tvgId,
                         tvgName = ch.tvgName,
-                        logo = ch.logo
+                        logo = ch.logo,
+                        optionsJson = encodeOptions(ch.options)
                     )
                 }
             )
+            EpgRepository.savePlaylistEpgUrls(context, file.absolutePath, parsed.epgUrls)
             ImportSummary(playlistId, parsed.channelCount)
         }
     }
@@ -134,10 +140,12 @@ class ChannelRepository(
                             groupTitle = ch.groupTitle,
                             tvgId = ch.tvgId,
                             tvgName = ch.tvgName,
-                            logo = ch.logo
+                            logo = ch.logo,
+                            optionsJson = encodeOptions(ch.options)
                         )
                     }
                 )
+                EpgRepository.savePlaylistEpgUrls(context, url, parsed.epgUrls)
                 ImportSummary(playlistId, parsed.channelCount)
             }
         }
@@ -247,6 +255,11 @@ class ChannelRepository(
 
     suspend fun recordPlay(channelId: Long) = withContext(Dispatchers.IO) {
         recentDao.recordAndTrim(channelId, keep = 40)
+    }
+
+    private fun encodeOptions(options: List<String>): String? {
+        if (options.isEmpty()) return null
+        return Json.encodeToString(ListSerializer(String.serializer()), options)
     }
 
     data class ImportSummary(val playlistId: Long, val channelCount: Int)

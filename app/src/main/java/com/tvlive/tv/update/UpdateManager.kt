@@ -97,11 +97,17 @@ class UpdateManager(private val activity: Activity) {
             }
             if (info == null || !semverGreaterThan(info.versionName, localVersionName())) {
                 if (info != null) Log.i(TAG, "Up to date (${info.versionName})")
-                onNone?.let { none -> main.post { none() } }
+                onNone?.let { none ->
+                    main.post {
+                        if (!activity.isFinishing && !activity.isDestroyed) none()
+                    }
+                }
                 return@Thread
             }
             Log.i(TAG, "Update available: ${info.versionName}")
-            main.post { onAvailable(info) }
+            main.post {
+                if (!activity.isFinishing && !activity.isDestroyed) onAvailable(info)
+            }
         }.apply { name = "hftv-update-check"; isDaemon = true }.start()
     }
 
@@ -209,7 +215,7 @@ class UpdateManager(private val activity: Activity) {
             confirm.alpha = 0.5f
             cancel.isEnabled = false
             progress.visibility = View.VISIBLE
-            download(info, d, title, message, progress)
+            download(info, d, title, message, progress, confirm, cancel)
         }
         dialog = d
         d.show()
@@ -220,15 +226,18 @@ class UpdateManager(private val activity: Activity) {
         d: Dialog,
         title: TextView,
         message: TextView,
-        progress: ProgressBar
+        progress: ProgressBar,
+        confirm: View,
+        cancel: View
     ) {
         Thread {
             var apkFile: File? = null
+            var conn: HttpURLConnection? = null
             try {
                 val target = File(activity.cacheDir, APK_NAME)
                 if (target.exists()) target.delete()
 
-                val conn = (URL(info.url).openConnection() as HttpURLConnection).apply {
+                conn = (URL(info.url).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 10_000
                     readTimeout = 20_000
                 }
@@ -251,6 +260,7 @@ class UpdateManager(private val activity: Activity) {
                                 if (percent != lastPercent) {
                                     lastPercent = percent
                                     main.post {
+                                        if (activity.isFinishing || activity.isDestroyed || !d.isShowing) return@post
                                         progress.progress = percent
                                         message.text = "下载中 $percent%"
                                     }
@@ -263,16 +273,24 @@ class UpdateManager(private val activity: Activity) {
             } catch (t: Throwable) {
                 Log.w(TAG, "Download failed", t)
                 main.post {
+                    if (activity.isFinishing || activity.isDestroyed || !d.isShowing) return@post
                     progress.visibility = View.GONE
                     title.text = "下载失败"
                     message.text = t.message ?: "网络错误"
+                    confirm.isEnabled = true
+                    confirm.alpha = 1f
+                    cancel.isEnabled = true
+                    cancel.requestFocus()
                 }
                 return@Thread
+            } finally {
+                runCatching { conn?.disconnect() }
             }
 
             val file = apkFile ?: return@Thread
             main.post {
-                d.dismiss()
+                if (activity.isFinishing || activity.isDestroyed) return@post
+                if (d.isShowing) d.dismiss()
                 install(file)
             }
         }.apply { name = "hftv-update-download"; isDaemon = true }.start()

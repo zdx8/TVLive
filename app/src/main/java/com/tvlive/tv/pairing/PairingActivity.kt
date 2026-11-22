@@ -74,8 +74,8 @@ class PairingActivity : Activity() {
 
         pageHtml = loadPageHtml()
 
-        server = PairingServer(token, pageHtml) { url, name ->
-            main.post { onUrlReceived(url, name) }
+        server = PairingServer(token, pageHtml) { url, name, epgUrl ->
+            main.post { onUrlReceived(url, name, epgUrl) }
         }
         server?.start()
 
@@ -107,11 +107,14 @@ class PairingActivity : Activity() {
 
     // ---------- 成功落地 ----------
 
-    private fun onUrlReceived(rawUrl: String, name: String? = null) {
+    private fun onUrlReceived(rawUrl: String, name: String? = null, epgUrl: String? = null) {
         if (isFinishing || isDestroyed) return
         val url = PairingServer.sanitizeUrl(rawUrl) ?: return
         val entry = com.tvlive.tv.data.store.SubscriptionStore.add(this, url, name)
         com.tvlive.tv.data.store.SubscriptionStore.setActive(this, url)
+        if (!epgUrl.isNullOrBlank()) {
+            com.tvlive.tv.data.epg.EpgRepository.saveCustomEpgUrl(this, epgUrl)
+        }
 
         titleView.text = "✓ 已收到订阅「${entry.name}」"
         hintView.text = "正在切换到「${entry.name}」…"
@@ -138,11 +141,17 @@ class PairingActivity : Activity() {
             hint = "https://example.com/playlist.m3u"
             setSingleLine(true)
         }
+        val epgInput = EditText(this).apply {
+            inputType = InputType.TYPE_TEXT_VARIATION_URI
+            hint = "EPG 节目单地址（可选，XMLTV .xml / .xml.gz）"
+            setSingleLine(true)
+        }
         val box = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(56, 24, 56, 0)
             addView(nameInput)
             addView(urlInput)
+            addView(epgInput)
         }
         // framework 版 AlertDialog：项目主题是原生 Material，AppCompat 版会崩。
         android.app.AlertDialog.Builder(this)
@@ -151,8 +160,9 @@ class PairingActivity : Activity() {
             .setPositiveButton("确定") { _, _ ->
                 val url = PairingServer.sanitizeUrl(urlInput.text.toString())
                 val name = nameInput.text.toString().trim().takeIf { it.isNotEmpty() }
+                val epgUrl = PairingServer.sanitizeUrl(epgInput.text.toString())
                 if (url != null) {
-                    onUrlReceived(url, name)
+                    onUrlReceived(url, name, epgUrl)
                 } else {
                     Toast.makeText(this, "链接格式不对：要以 http:// 或 https:// 开头", Toast.LENGTH_LONG).show()
                 }
@@ -191,7 +201,9 @@ class PairingActivity : Activity() {
                 while (addrs.hasMoreElements()) {
                     val a = addrs.nextElement()
                     if (a is Inet4Address && a.isSiteLocalAddress) {
-                        candidates += Cand(nif.name, a.hostAddress)
+                        // InetAddress.hostAddress 在平台类型里可空；站点本地 IPv4
+                        // 实际不会为 null，但显式兜底避免可空值进非空 String 字段。
+                        a.hostAddress?.let { ip -> candidates += Cand(nif.name, ip) }
                     }
                 }
             }

@@ -83,6 +83,7 @@ class PlayerController(
 
     // ---- Internal state ----
     private var player: ExoPlayer? = null
+    private var originalStreamUrl: String? = null
     private var currentStreamUrl: String? = null
     private var currentTitle: String? = null
     private var isLive: Boolean = false
@@ -90,6 +91,7 @@ class PlayerController(
     private var isStallWatchdogArmed = false
     private var lastPositionForWatchdogMs = 0L
     private var lastPositionChangeAt = SystemClock.elapsedRealtime()
+    private var steadyPlaybackSinceMs = 0L
     private var playWhenReadyCached = true
     private var errorReportedTerminal = false
 
@@ -99,7 +101,17 @@ class PlayerController(
      * to be chosen from the *first* stream's live/VOD nature, and we
      * don't know that until [play].
      */
+    @Volatile
     private var prepared = false
+
+    /**
+     * Monotonically increasing generation counter incremented on every
+     * [play], [stop], and [release] call so an in-flight background
+     * redirect resolution can never hijack a newer channel switch or
+     * revive a released player.
+     */
+    @Volatile
+    private var playGeneration: Long = 0L
 
     /**
      * The live/VOD mode the current LoadControl was built for. When
@@ -122,12 +134,29 @@ class PlayerController(
      * released controller and throw.
      */
     private val reconnectRunnable = Runnable {
-        val url = currentStreamUrl
-        if (url == null || player == null) {
+        val targetUrl = originalStreamUrl ?: currentStreamUrl
+        if (targetUrl == null || !prepared) {
             Log.i(TAG, "Reconnect skipped — controller released or no stream")
             return@Runnable
         }
-        doStartPlayback(url, currentTitle, currentOptions)
+        // Clear stalled decoder/buffer state before re-preparing.
+        player?.stop()
+        if (!needsRedirectResolve(targetUrl)) {
+            doStartPlayback(targetUrl, currentTitle, currentOptions)
+            return@Runnable
+        }
+        // Re-resolve short links on reconnect in case the previous 302 token expired.
+        val gen = playGeneration
+        val title = currentTitle
+        val opts = currentOptions
+        Thread {
+            val resolved = resolveRedirects(targetUrl)
+            Log.i(TAG, "Reconnect resolved redirect: $targetUrl -> ${resolved.take(120)}")
+            mainHandler.post {
+                if (gen != playGeneration || !prepared) return@post
+                doStartPlayback(resolved, title, opts)
+            }
+        }.apply { name = "hftv-reconnect-redirect"; isDaemon = true }.start()
     }
 
     /**
@@ -284,7 +313,10 @@ class PlayerController(
      */
     fun play(streamUrl: String, title: String? = null, options: ChannelOptions = ChannelOptions.empty()) {
         reconnectAttempt = 0
+        steadyPlaybackSinceMs = 0L
         errorReportedTerminal = false
+        originalStreamUrl = streamUrl
+        val gen = ++playGeneration
 
         // 无扩展名的短链通常是 302 到另一台主机/另一种协议的 HLS
         // （https://iptv.example.com/608807420 → http://migu....:8080/...m3u8）。
@@ -300,7 +332,11 @@ class PlayerController(
         Thread {
             val resolved = resolveRedirects(streamUrl)
             Log.i(TAG, "Resolved redirect: $streamUrl -> ${resolved.take(120)}")
-            Handler(Looper.getMainLooper()).post {
+            mainHandler.post {
+                if (gen != playGeneration || !prepared) {
+                    Log.i(TAG, "Discarding stale redirect result for $streamUrl")
+                    return@post
+                }
                 doStartPlayback(resolved, title, options)
             }
         }.apply { name = "hftv-redirect"; isDaemon = true }.start()
@@ -324,6 +360,9 @@ class PlayerController(
         currentTitle = title
         currentOptions = options
         isLive = guessLiveFromUrl(streamUrl)
+        // Keep process-wide Referer in sync even when ensurePlayer() reuses
+        // the existing ExoPlayer across subscription switches.
+        PlayerConfig.defaultRequestHeaders["Referer"] = playlistReferer
 
         // Build/rebuild with the correct buffer profile now that we
         // know whether this is a live or VOD stream.
@@ -360,8 +399,14 @@ class PlayerController(
 
     /** 只有「无扩展名的短链」才需要额外解析；.m3u8 / .mp4 直接交给播放器。 */
     private fun needsRedirectResolve(url: String): Boolean {
-        val path = url.substringBefore('?').substringBefore('#').lowercase()
-        return !path.endsWith(".m3u8") && !path.contains('.')
+        val lower = url.lowercase()
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) return false
+        val path = lower.substringAfter("://", "")
+            .substringAfter('/', "")
+            .substringBefore('?')
+            .substringBefore('#')
+        val lastSegment = path.substringAfterLast('/')
+        return !path.endsWith(".m3u8") && lastSegment.isNotEmpty() && !lastSegment.contains('.')
     }
 
     /**
@@ -372,10 +417,9 @@ class PlayerController(
      */
     private fun resolveRedirects(url: String): String {
         var current = url
-        var connection: java.net.HttpURLConnection? = null
         return try {
             repeat(5) {
-                connection = (java.net.URL(current).openConnection() as java.net.HttpURLConnection).apply {
+                val conn = (java.net.URL(current).openConnection() as java.net.HttpURLConnection).apply {
                     instanceFollowRedirects = false
                     connectTimeout = 6_000
                     readTimeout = 6_000
@@ -383,21 +427,23 @@ class PlayerController(
                     setRequestProperty("Range", "bytes=0-0")
                     setRequestProperty("User-Agent", PlayerConfig.userAgent)
                 }
-                val code = connection!!.responseCode
-                if (code in 300..399) {
-                    val location = connection!!.getHeaderField("Location")
-                    if (location.isNullOrBlank()) return current
-                    current = java.net.URL(java.net.URL(current), location).toString()
-                } else {
-                    return current
+                try {
+                    val code = conn.responseCode
+                    if (code in 300..399) {
+                        val location = conn.getHeaderField("Location")
+                        if (location.isNullOrBlank()) return current
+                        current = java.net.URL(java.net.URL(current), location).toString()
+                    } else {
+                        return current
+                    }
+                } finally {
+                    runCatching { conn.disconnect() }
                 }
             }
             current
         } catch (t: Throwable) {
             Log.w(TAG, "Redirect resolve failed for $url: ${t.message}")
             url
-        } finally {
-            runCatching { connection?.disconnect() }
         }
     }
 
@@ -442,15 +488,22 @@ class PlayerController(
     }
 
     fun stop() {
+        playGeneration++
         stopWatchdogs()
+        originalStreamUrl = null
         currentStreamUrl = null
+        steadyPlaybackSinceMs = 0L
         player?.stop()
         player?.clearMediaItems()
     }
 
     fun release() {
+        playGeneration++
+        prepared = false
         stopWatchdogs()
+        originalStreamUrl = null
         currentStreamUrl = null
+        steadyPlaybackSinceMs = 0L
         player?.removeListener(playerListener)
         player?.release()
         player = null
@@ -554,17 +607,33 @@ class PlayerController(
         // when Media3's own listener doesn't fire).
         callbacks.onPositionChanged(pos, durationMs(), isLive)
 
-        if (!p.isPlaying) return // pause / buffering — don't fire stall
-
-        if (pos != lastPositionForWatchdogMs) {
-            lastPositionForWatchdogMs = pos
+        // Only skip when the user explicitly paused playback. When a live
+        // stream stalls in STATE_BUFFERING, p.isPlaying is false while
+        // p.playWhenReady is still true — we MUST keep timing so stalled
+        // buffering triggers auto-recovery.
+        if (!p.playWhenReady) {
             lastPositionChangeAt = now
+            steadyPlaybackSinceMs = 0L
             return
         }
 
+        if (p.isPlaying && pos != lastPositionForWatchdogMs) {
+            lastPositionForWatchdogMs = pos
+            lastPositionChangeAt = now
+            if (steadyPlaybackSinceMs == 0L) {
+                steadyPlaybackSinceMs = now
+            } else if (reconnectAttempt > 0 && now - steadyPlaybackSinceMs >= RECONNECT_RESET_STEADY_MS) {
+                // Stream has been playing smoothly again — restore the full retry budget.
+                Log.i(TAG, "Playback steady for ${now - steadyPlaybackSinceMs}ms — resetting reconnect attempts")
+                reconnectAttempt = 0
+            }
+            return
+        }
+
+        steadyPlaybackSinceMs = 0L
         val stalledFor = now - lastPositionChangeAt
         if (stalledFor >= stallWatchdogMs) {
-            Log.w(TAG, "Stall watchdog: no progress in ${stalledFor}ms")
+            Log.w(TAG, "Stall watchdog: no progress in ${stalledFor}ms (state=${p.playbackState})")
             isStallWatchdogArmed = false
             onStall()
         }
@@ -572,10 +641,9 @@ class PlayerController(
 
     private fun onStall() {
         // Distinguish a real stall (live / VOD mid-play) from "VOD ended".
-        // The macOS project's bug was conflating these; without the
-        // ENDED check, every finished 30s VOD popped a connection error.
+        // Live streams that drop to STATE_ENDED should still reconnect.
         val p = player ?: return
-        if (p.playbackState == Player.STATE_ENDED) {
+        if (p.playbackState == Player.STATE_ENDED && !isLive) {
             Log.i(TAG, "Stall watchdog: VOD ended normally")
             return
         }
@@ -653,22 +721,55 @@ class PlayerController(
             // (since boot, ~1.2e6) made `stalledFor` hugely negative,
             // so the stall watchdog could never fire after the first
             // state transition.
-            lastPositionForWatchdogMs = positionMs()
-            lastPositionChangeAt = SystemClock.elapsedRealtime()
-            isStallWatchdogArmed = (state == Player.STATE_READY)
+            if (state == Player.STATE_READY) {
+                lastPositionForWatchdogMs = positionMs()
+                lastPositionChangeAt = SystemClock.elapsedRealtime()
+            } else if (state == Player.STATE_BUFFERING && !isStallWatchdogArmed) {
+                lastPositionForWatchdogMs = positionMs()
+                lastPositionChangeAt = SystemClock.elapsedRealtime()
+            }
+            // Keep watchdog armed during BOTH READY and BUFFERING so infinite
+            // buffering stalls actually trigger reconnect.
+            isStallWatchdogArmed = (state == Player.STATE_READY || state == Player.STATE_BUFFERING)
             callbacks.onPlaybackStateChanged(mapped)
+
+            // Live IPTV feeds often emit premature EOF when an upstream encoder
+            // hiccups — reconnect automatically instead of freezing forever.
+            if (state == Player.STATE_ENDED && isLive && playWhenReadyCached && !errorReportedTerminal) {
+                Log.w(TAG, "Live stream ended unexpectedly — scheduling reconnect")
+                scheduleReconnect(reason = "live stream ended")
+            }
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             playWhenReadyCached = playWhenReady
             if (!playWhenReady) {
+                steadyPlaybackSinceMs = 0L
                 callbacks.onPlaybackStateChanged(PlaybackState.PAUSED)
-            } else if (player?.playbackState == Player.STATE_READY) {
-                callbacks.onPlaybackStateChanged(PlaybackState.READY)
+            } else {
+                lastPositionChangeAt = SystemClock.elapsedRealtime()
+                if (player?.playbackState == Player.STATE_READY) {
+                    callbacks.onPlaybackStateChanged(PlaybackState.READY)
+                }
             }
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            // Behind-live-window is the most common recoverable error after a
+            // brief network stall on HLS/DASH live streams: jump straight back
+            // to the live edge and resume immediately.
+            if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                val p = player
+                if (p != null) {
+                    Log.w(TAG, "Behind live window — seeking to live edge and re-preparing")
+                    callbacks.onPlaybackStateChanged(PlaybackState.RECONNECTING)
+                    p.seekToDefaultPosition()
+                    p.prepare()
+                    p.playWhenReady = playWhenReadyCached
+                    startWatchdogs()
+                    return
+                }
+            }
             // Classify the error. The macOS project's lesson: don't
             // treat every error as terminal — some are recoverable.
             val (transient, message) = classifyError(error)
@@ -694,28 +795,19 @@ class PlayerController(
 
     companion object {
         private const val TAG = "TVLive.Player"
+        private const val RECONNECT_RESET_STEADY_MS = 3_000L
 
         /**
          * Pure classification: is this error code transient (worth
          * retrying) or terminal? Extracted as a top-level function so
          * we can unit-test it without a PlaybackException instance
          * (which has no public constructor).
-         *
-         * Codes we consider transient:
-         *   - ERROR_CODE_IO_UNSPECIFIED        — generic IO, often
-         *                                       recoverable (DNS, socket
-         *                                       reset, malformed HLS)
-         *   - ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
-         *   - ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
-         *   - ERROR_CODE_IO_BAD_HTTP_STATUS     (e.g. 503 with Retry-After)
-         *   - ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE
-         *                                     — usually a stream-side
-         *                                       seek past EOF on a live
-         *                                       feed
          */
         @JvmStatic
         fun classifyErrorCode(code: Int): Pair<Boolean, String> {
             val transientCodes = setOf(
+                PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW,
+                PlaybackException.ERROR_CODE_TIMEOUT,
                 PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                 PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
                 PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
@@ -734,6 +826,8 @@ class PlayerController(
          */
         @JvmStatic
         fun errorCodeName(code: Int): String = when (code) {
+            PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW -> "ERROR_CODE_BEHIND_LIVE_WINDOW"
+            PlaybackException.ERROR_CODE_TIMEOUT -> "ERROR_CODE_TIMEOUT"
             PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> "ERROR_CODE_IO_UNSPECIFIED"
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> "ERROR_CODE_IO_NETWORK_CONNECTION_FAILED"
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT"
@@ -743,9 +837,6 @@ class PlayerController(
             PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> "ERROR_CODE_IO_FILE_NOT_FOUND"
             PlaybackException.ERROR_CODE_IO_NO_PERMISSION -> "ERROR_CODE_IO_NO_PERMISSION"
             PlaybackException.ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED -> "ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED"
-            // 1.4.1 doesn't have IO_UNSUPPORTED_OPERATION / IO_NETWORK_UNREACHABLE;
-            // they were added in later versions. The else branch catches
-            // them when we upgrade.
             else -> "ERROR_CODE_$code"
         }
 
@@ -773,9 +864,11 @@ class PlayerController(
      *  or 'm3u8' with no `?vod=1`. Real apps would set this from the
      *  M3U `EXTINF` metadata. */
     private fun guessLiveFromUrl(url: String): Boolean {
-        val lower = url.lowercase()
-        if (lower.endsWith(".mp4") || lower.endsWith(".mkv")) return false
-        return lower.contains("live") || lower.endsWith(".m3u8")
+        val path = url.substringBefore('?').substringBefore('#').lowercase()
+        val vodExtensions = listOf(".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v", ".mp3", ".m4a")
+        if (vodExtensions.any { path.endsWith(it) }) return false
+        if (url.lowercase().contains("vod=1")) return false
+        return true
     }
 }
 

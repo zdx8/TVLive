@@ -31,8 +31,8 @@ android {
         targetSdk = 35       // Android 15 (Vanilla Ice Cream)
         // versionCode 与主版本对齐（v2.x → 2xx）：必须大于 1.2.x 时代的 22，
         // 否则老设备覆盖安装会被系统判降级拒绝（INSTALL_FAILED_VERSION_DOWNGRADE）。
-        versionCode = 200
-        versionName = "2.0.0"
+        versionCode = 210
+        versionName = "2.1.0"
 
         // 私有包开关：`./gradlew assembleRelease -PprivateSubs=true` 时，
         // 挂载 app/assets-private/（gitignore，含作者订阅 private-subscriptions.json）
@@ -186,6 +186,10 @@ dependencies {
 
     // ---------- Local unit tests (mirror of Diagnostics.runOfflineRegressionChecks) ----------
     testImplementation("junit:junit:4.13.2")
+    // XmltvParser 走 org.xmlpull.v1.XmlPullParserFactory。JVM 单测里 android.jar
+    // 的桩方法直接抛 "Method newInstance ... not mocked"，需要一个真实实现才能
+    // 解析 XML；kxml2 提供 XmlPullParser API + KXmlParser，只在测试类路径生效。
+    testImplementation("net.sf.kxml:kxml2:2.3.0")
 }
 
 // Pin transitive versions of androidx.activity and androidx.lifecycle to last

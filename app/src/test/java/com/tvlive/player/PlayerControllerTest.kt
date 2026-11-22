@@ -59,6 +59,24 @@ class PlayerControllerTest {
     }
 
     @Test
+    fun `BEHIND_LIVE_WINDOW is transient`() {
+        val (transient, name) = PlayerController.classifyErrorCode(
+            PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW
+        )
+        assertTrue("BEHIND_LIVE_WINDOW must be transient", transient)
+        assertEquals("ERROR_CODE_BEHIND_LIVE_WINDOW", name)
+    }
+
+    @Test
+    fun `TIMEOUT is transient`() {
+        val (transient, name) = PlayerController.classifyErrorCode(
+            PlaybackException.ERROR_CODE_TIMEOUT
+        )
+        assertTrue("TIMEOUT must be transient", transient)
+        assertEquals("ERROR_CODE_TIMEOUT", name)
+    }
+
+    @Test
     fun `IO_FILE_NOT_FOUND is terminal`() {
         // A 404 / file-not-found won't fix itself with retries.
         val (transient, _) = PlayerController.classifyErrorCode(

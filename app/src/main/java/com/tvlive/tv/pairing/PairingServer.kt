@@ -32,7 +32,7 @@ class PairingServer(
     private val token: String,
     private val pageHtml: String,
     private val ttlMs: Long = DEFAULT_TTL_MS,
-    private val onSubmit: (url: String, name: String?) -> Unit,
+    private val onSubmit: (url: String, name: String?, epgUrl: String?) -> Unit,
 ) {
     private val startedAtMs = SystemClock.elapsedRealtime()
     private val used = AtomicBoolean(false)
@@ -115,7 +115,7 @@ class PairingServer(
                     method == "GET" && (rawPath == "/" || rawPath.startsWith("/?")) ->
                         handleGet(rawPath, s)
                     method == "HEAD" && (rawPath == "/" || rawPath.startsWith("/?")) ->
-                        respond(s, 200, "text/html; charset=utf-8", "", headOnly = true)
+                        handleHead(rawPath, s)
                     method == "POST" && rawPath.startsWith("/submit") ->
                         handleSubmit(rawPath, body, s)
                     else ->
@@ -127,6 +127,15 @@ class PairingServer(
         } catch (e: Exception) {
             Log.i(TAG, "Connection dropped: ${e.message}")
         }
+    }
+
+    private fun handleHead(path: String, sock: Socket) {
+        val t = queryParams(path)["t"]
+        if (!tokenValid(t)) {
+            respond(sock, 403, "text/plain; charset=utf-8", "", headOnly = true)
+            return
+        }
+        respond(sock, 200, "text/html; charset=utf-8", "", headOnly = true)
     }
 
     private fun handleGet(path: String, sock: Socket) {
@@ -145,13 +154,18 @@ class PairingServer(
             return
         }
         val form = String(body, Charsets.UTF_8)
-        val fields = form.split('&')
-            .filter { it.contains('=') }
-            .associate {
-                val k = URLDecoder.decode(it.substringBefore('='), "UTF-8")
-                val v = URLDecoder.decode(it.substringAfter('='), "UTF-8")
-                k to v
-            }
+        val fields = try {
+            form.split('&')
+                .filter { it.contains('=') }
+                .associate {
+                    val k = URLDecoder.decode(it.substringBefore('='), "UTF-8")
+                    val v = URLDecoder.decode(it.substringAfter('='), "UTF-8")
+                    k to v
+                }
+        } catch (_: IllegalArgumentException) {
+            respond(sock, 400, "text/plain; charset=utf-8", "请求参数编码无效")
+            return
+        }
         val url = sanitizeUrl(fields["url"].orEmpty())
         if (url == null) {
             respond(sock, 400, "text/plain; charset=utf-8", "链接格式不对：要以 http:// 或 https:// 开头")
@@ -161,9 +175,10 @@ class PairingServer(
             respond(sock, 403, "text/plain; charset=utf-8", "该二维码已被使用")
             return
         }
-        // 名字留空则由 PlaylistNamer 从订阅源内容自动取名。
+        // 名字留空则由 PlaylistNamer 从订阅源内容自动取名；EPG 地址可选。
         val name = fields["name"]?.trim()?.takeIf { it.isNotEmpty() }?.take(24)
-        onSubmit(url, name)
+        val epgUrl = fields["epg"]?.let { sanitizeUrl(it) }
+        onSubmit(url, name, epgUrl)
         respond(sock, 200, "text/plain; charset=utf-8", "OK")
     }
 
@@ -209,11 +224,14 @@ class PairingServer(
             if (q.isEmpty()) return emptyMap()
             return q.split('&')
                 .filter { it.contains('=') }
-                .associate {
-                    val k = URLDecoder.decode(it.substringBefore('='), "UTF-8")
-                    val v = URLDecoder.decode(it.substringAfter('='), "UTF-8")
-                    k to v
+                .mapNotNull { pair ->
+                    runCatching {
+                        val k = URLDecoder.decode(pair.substringBefore('='), "UTF-8")
+                        val v = URLDecoder.decode(pair.substringAfter('='), "UTF-8")
+                        k to v
+                    }.getOrNull()
                 }
+                .toMap()
         }
 
         /** 按字节读一行（到 \n），去掉行尾 \r；流结束返回 null。 */

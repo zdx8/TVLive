@@ -37,7 +37,7 @@ object AppConfig {
 
     /**
      * 自更新清单：GitHub releases/latest —— UpdateManager 识别
-     * api.github.com 地址后按 Release 解析（tag=版本、*-public-release.apk
+     * api.github.com 地址后按 Release 解析（tag=版本、*-release.apk
      * 附件=安装包、release body=更新说明）。发布一个新 Release 即完成
      * 一次推送。只在用户 MENU 手动「检查更新」时请求；失败静默提示。
      */

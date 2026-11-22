@@ -71,8 +71,24 @@
         android:visibility="gone" />
 
     <TextView
-        android:id="@+id/menu_update"
+        android:id="@+id/menu_epg"
         android:layout_marginTop="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@drawable/dialog_menu_item_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="📺   节目单"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp" />
+
+    <TextView
+        android:id="@+id/menu_update"
+        android:layout_marginTop="10dp"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:background="@drawable/dialog_menu_item_bg"

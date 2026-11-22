@@ -30,7 +30,8 @@ data class Channel(
  */
 data class ParsedPlaylist(
     val channels: List<Channel>,
-    val suggestedName: String
+    val suggestedName: String,
+    val epgUrls: List<String> = emptyList()
 ) {
     val channelCount: Int get() = channels.size
 
