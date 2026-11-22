@@ -65,6 +65,10 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
     private val hideEpgBannerRunnable = Runnable { epgBanner.visibility = View.GONE }
     private var startedAtMs: Long = 0
 
+    // EPG 加载并发合并：启动、切订阅、GUIDE 弹窗可能同时请求，合并为一次下载。
+    private var epgLoadInFlight = false
+    private val epgLoadWaiters = mutableListOf<(Result<com.tvlive.tv.data.epg.EpgStats>) -> Unit>()
+
     /** Full channel list for drawer navigation. */
     private var allChannels: List<com.tvlive.tv.data.model.ChannelEntity> = emptyList()
     private var currentIndex: Int = -1
@@ -904,22 +908,37 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
         }
     }
 
-    /** 后台加载当前订阅的 XMLTV 节目单（优先 6 小时缓存），完成后刷新抽屉与信息条。 */
+    /** 后台加载当前订阅的 XMLTV 节目单（优先缓存），完成后刷新抽屉与信息条。
+     *  并发调用会合并为一次请求，所有调用方都会收到结果——避免弹窗反复触发重复下载。 */
     private fun loadEpgForPlaylist(
         playlistKey: String?,
         forceRefresh: Boolean = false,
         onDone: ((Result<com.tvlive.tv.data.epg.EpgStats>) -> Unit)? = null
     ) {
+        // 强制刷新另起请求；普通请求若已有在途则挂到等待队列，不重复下载。
+        if (!forceRefresh && epgLoadInFlight) {
+            if (onDone != null) epgLoadWaiters += onDone
+            return
+        }
+        epgLoadInFlight = true
         lifecycleScope.launch {
             val result = EpgRepository.loadForPlaylist(applicationContext, playlistKey, forceRefresh)
-            if (isFinishing || isDestroyed) return@launch
-            if (result.isSuccess) {
+            if (!isFinishing && !isDestroyed && result.isSuccess) {
                 drawer.setEpgIndex(EpgRepository.index())
                 if (epgBanner.visibility == View.VISIBLE) {
                     allChannels.getOrNull(currentIndex)?.let { showEpgBannerFor(it, currentIndex) }
                 }
             }
-            onDone?.invoke(result)
+            epgLoadInFlight = false
+            if (!isFinishing && !isDestroyed) {
+                onDone?.invoke(result)
+                // 把在途期间挂进来的等待者一次性通知（拷贝后清空，避免回调里再次触发时并发修改）。
+                val waiters = epgLoadWaiters.toList()
+                epgLoadWaiters.clear()
+                waiters.forEach { it(result) }
+            } else {
+                epgLoadWaiters.clear()
+            }
         }
     }
 
@@ -985,11 +1004,12 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
 
         titleView.text = if (ch != null) "${ch.displayName} · 今日节目单" else "今日节目单"
 
-        fun renderSchedule() {
+        fun renderSchedule(loading: Boolean = false) {
             val nowMs = System.currentTimeMillis()
             val idx = EpgRepository.index()
             val src = EpgRepository.activeSourceUrl()
             subtitleView.text = when {
+                loading -> "正在加载节目单…"
                 src != null -> "来源：${src.substringAfter("://").take(42)}（${idx.channelCount} 频道）"
                 else -> "未检测到 EPG 源（可在 M3U 头部添加 url-tvg 或扫码页填写）"
             }
@@ -997,10 +1017,10 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
             if (items.isEmpty()) {
                 listView.visibility = View.GONE
                 emptyHint.visibility = View.VISIBLE
-                emptyHint.text = if (idx.isEmpty) {
-                    "暂无节目单数据\n请在订阅 M3U 中配置 url-tvg，或在「添加订阅」中填写 EPG 地址"
-                } else {
-                    "当前频道暂无今日节目单"
+                emptyHint.text = when {
+                    loading -> "节目单加载中…\n首次加载需联网下载，请稍候"
+                    idx.isEmpty -> "暂无节目单数据\n请在订阅 M3U 中配置 url-tvg，或在「添加订阅」中填写 EPG 地址"
+                    else -> "当前频道暂无今日节目单"
                 }
             } else {
                 emptyHint.visibility = View.GONE
@@ -1025,7 +1045,24 @@ class PlaybackActivity : FragmentActivity(), ChannelDrawer.Callbacks {
             }
         }
 
-        renderSchedule()
+        // 索引为空时主动触发一次加载并显示进度——不再被动等后台任务完成。
+        // 若已有在途请求，loadEpgForPlaylist 会把回调挂到等待队列，复用同一次下载。
+        if (EpgRepository.index().isEmpty) {
+            renderSchedule(loading = true)
+            loadEpgForPlaylist(activeSubscriptionUrl()) { res ->
+                if (!dialog.isShowing) return@loadEpgForPlaylist
+                renderSchedule()
+                if (res.isFailure) {
+                    Toast.makeText(
+                        this,
+                        "节目单加载失败：${res.exceptionOrNull()?.message ?: "未知错误"}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        } else {
+            renderSchedule()
+        }
 
         refreshBtn.setOnClickListener {
             refreshBtn.isEnabled = false

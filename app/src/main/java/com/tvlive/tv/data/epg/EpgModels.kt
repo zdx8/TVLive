@@ -61,6 +61,10 @@ class EpgIndex(
     val channelCount: Int get() = programsByChannelId.size
     val programCount: Int get() = programsByChannelId.values.sumOf { it.size }
 
+    /** 供 EpgIndexSerializer 写入缓存使用（只读，不做防御性拷贝以免大索引重复占内存）。 */
+    internal fun programsForSerialization(): Map<String, List<EpgProgram>> = programsByChannelId
+    internal fun aliasMapForSerialization(): Map<String, String> = displayNameToChannelId
+
     /** 按 ChannelEntity 的 tvgId / tvgName / name 多级匹配节目列表。 */
     fun programsFor(channel: ChannelEntity): List<EpgProgram> =
         programsFor(channel.tvgId, channel.tvgName, channel.name)
