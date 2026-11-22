@@ -11,7 +11,7 @@ Android TV 上的 IPTV / 直播播放器。M3U 订阅、遥控器全键盘操作
 ## 下载
 
 到 [Releases](https://github.com/zdx8/TVLive/releases/latest) 下载
-`TVLive-v2.0.0-release.apk`，侧载（U 盘 / adb / 文件管理器）安装即可。
+`TVLive-v2.1.0-release.apk`，侧载（U 盘 / adb / 文件管理器）安装即可。
 
 已安装的用户不联网也能用：更新**只在 MENU →「检查更新」手动触发**（不后台自动检查），
 有新版本会弹出更新卡片，确认后自动下载并交给系统安装器。
@@ -21,6 +21,7 @@ Android TV 上的 IPTV / 直播播放器。M3U 订阅、遥控器全键盘操作
 ## 功能
 
 - ✅ M3U / M3U8 订阅（远程地址 / 本地文件 / 单条流直连）
+- ✅ **EPG 电子节目单**：自动识别 M3U 头部 `url-tvg` / `x-tvg-url`（支持 `.xml` / `.xml.gz`），支持扫码页自定义 EPG 地址、6 小时本地缓存、切台底部展示当前/下一档与进度条、频道列表显示当前节目、MENU/GUIDE 查看今日完整节目单
 - ✅ **手机扫码添加订阅**：电视亮二维码，手机扫码在网页里粘贴地址和名称，一键提交
 - ✅ 订阅管理：多订阅切换、行内删除、订阅名自动识别（也可在扫码页手动命名）
 - ✅ 频道列表抽屉（左键召唤，3 秒无操作自动隐藏）、长按 OK 收藏
@@ -79,10 +80,10 @@ TVLive/
 │   │   ├── model/ source/         Room 实体与 DAO、自然排序、订阅合并
 │   ├── player/                    PlayerController / PlaybackActivity / ChannelDrawer
 │   ├── ui/                        磁贴主页 / 频道列表 / 数字键缓冲
-│   ├── update/                    UpdateManager（NAS 清单 + GitHub Releases 双模式）
+│   ├── update/                    UpdateManager（GitHub Releases 自更新）
 │   └── widget/                    MaxHeightScrollView 等通用控件
 ├── app/src/main/assets/pairing.html   扫码页手机端网页
-├── docs/                          设计文档
+├── docs/                          项目官网静态页（GitHub Pages）
 ├── scripts/                       打包 / 诊断 / 资源生成脚本
 └── build.gradle.kts               AGP 8.6.1 · Kotlin 2.0.21 · Media3 1.7
 ```
@@ -90,8 +91,7 @@ TVLive/
 ## 设计说明
 
 - **扫码配对**：电视在局域网内起一个临时 HTTP 服务（一次性 token、5 分钟过期），
-  手机扫码直连电视内置网页提交——数据不出局域网，详见
-  [docs/扫码填源-设计方案.md](docs/扫码填源-设计方案.md)。
+  手机扫码直连电视内置网页提交——数据不出局域网。
 - **可靠性**：重连退避 + 播放看门狗 + 连续失败保护，直播流卡死自动恢复或跳台；
   订阅刷新采用原地合并，不丢收藏与播放历史。
 - **自更新**：GitHub Releases 即更新清单——发一个 Release 并上传
