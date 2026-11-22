@@ -36,10 +36,13 @@ object AppConfig {
     const val PREF_ACTIVE_SUBSCRIPTION = "active_subscription"
 
     /**
-     * 自更新清单：GitHub releases/latest —— UpdateManager 识别
-     * api.github.com 地址后按 Release 解析（tag=版本、*-release.apk
-     * 附件=安装包、release body=更新说明）。发布一个新 Release 即完成
-     * 一次推送。只在用户 MENU 手动「检查更新」时请求；失败静默提示。
+     * 自更新清单地址，构建期注入（见 app/build.gradle.kts）：
+     * - 公开包：GitHub releases/latest
+     * - 私有包：本机 Gitea 公开更新仓库的 releases/latest，地址由
+     *   .env.sh 的 TVLIVE_UPDATE_URL 提供，内网 IP 不进公开源码。
+     *
+     * 两端都是 Release JSON（tag=版本、附件=APK、body=说明）。空字符串
+     * 表示自更新禁用。只在用户 MENU 手动「检查更新」时请求。
      */
-    const val UPDATE_MANIFEST_URL = "https://api.github.com/repos/zdx8/TVLive/releases/latest"
+    val UPDATE_MANIFEST_URL: String get() = BuildConfig.UPDATE_MANIFEST_URL
 }

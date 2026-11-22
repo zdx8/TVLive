@@ -47,9 +47,6 @@ class UpdateManager(private val activity: Activity) {
         private const val KEY_LAST_CHECK = "last_check"
         private const val CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L // 6 小时
         private const val APK_NAME = "hftv-update.apk"
-
-        /** GitHub release 认领的安装包后缀（兼容历史 -public-release.apk 命名）。 */
-        private const val GITHUB_APK_SUFFIX = "-release.apk"
     }
 
     data class Info(
@@ -112,9 +109,8 @@ class UpdateManager(private val activity: Activity) {
     }
 
     /**
-     * 更新清单：GitHub releases/latest —— tag = 版本号（v1.2.19），
-     * assets 里挑 *-release.apk 当安装包，release body 当更新说明。
-     * 公开仓库无需认证。
+     * 更新清单：Release JSON（公开包 GitHub / 私有包 Gitea）——tag = 版本号，
+     * assets 里按构建类型挑公开或私有 APK，body 当更新说明。两端均无需认证。
      */
     private fun fetchManifest(): Info? {
         val conn = (URL(AppConfig.UPDATE_MANIFEST_URL).openConnection() as HttpURLConnection).apply {
@@ -132,26 +128,25 @@ class UpdateManager(private val activity: Activity) {
             val tag = json.optString("tag_name").removePrefix("v")
             if (tag.isBlank()) return null
             val assets = json.optJSONArray("assets") ?: return null
-            var apkUrl: String? = null
-            var apkSize = 0L
+            val candidates = mutableListOf<UpdateAssetPicker.Asset>()
             for (i in 0 until assets.length()) {
                 val a = assets.optJSONObject(i) ?: continue
-                val name = a.optString("name")
-                if (name.endsWith(GITHUB_APK_SUFFIX)) {
-                    apkUrl = a.optString("browser_download_url")
-                    apkSize = a.optLong("size", 0L)
-                    break
-                }
+                candidates += UpdateAssetPicker.Asset(
+                    name = a.optString("name"),
+                    url = a.optString("browser_download_url"),
+                    size = a.optLong("size", 0L)
+                )
             }
-            if (apkUrl.isNullOrBlank()) {
-                Log.i(TAG, "Latest release has no $GITHUB_APK_SUFFIX asset")
+            val picked = UpdateAssetPicker.pick(candidates, BuildConfig.INCLUDE_PRIVATE_SUBS)
+            if (picked == null) {
+                Log.i(TAG, "No matching APK asset (private=${BuildConfig.INCLUDE_PRIVATE_SUBS})")
                 return null
             }
             Info(
                 versionCode = 0,
                 versionName = tag,
-                url = apkUrl,
-                size = apkSize,
+                url = picked.url,
+                size = picked.size,
                 notes = json.optString("body", "")
             )
         } finally {

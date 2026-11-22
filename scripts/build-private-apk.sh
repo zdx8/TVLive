@@ -13,7 +13,8 @@ cd "$(dirname "$0")/.."
 source .env.sh
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 
-./gradlew :app:assembleRelease -PprivateSubs=true
+# 内网更新源地址只在本地 .env.sh 里，以 -P 传进来（不写死在公开脚本）。
+./gradlew :app:assembleRelease -PprivateSubs=true -PprivateUpdateUrl="${TVLIVE_UPDATE_URL:-}"
 
 src="app/build/outputs/apk/release/app-release.apk"
 ver=$(python3 -c "import json;print(json.load(open('app/build/outputs/apk/release/output-metadata.json'))['elements'][0]['versionName'])")

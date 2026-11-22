@@ -4,7 +4,7 @@
 
 ## 1. 一句话结论
 
-Android TV 上的 IPTV / 直播播放器（Kotlin + Media3/ExoPlayer，包名 `com.tvlive.tv`）。v2.1.1 已定版，
+Android TV 上的 IPTV / 直播播放器（Kotlin + Media3/ExoPlayer，包名 `com.tvlive.tv`）。v2.1.2 已定版，
 公开包与私有包两个 APK 已产出，源码推到 GitHub 与自建 Gitea。使用者是「用遥控器看电视直播源」的
 家庭用户：装完扫码填 M3U 地址即用，不联网也能看已缓存的订阅。
 
@@ -12,14 +12,14 @@ Android TV 上的 IPTV / 直播播放器（Kotlin + Media3/ExoPlayer，包名 `c
 
 | 交付物 | 路径 | 版本 | 校验 |
 |---|---|---|---|
-| 公开版 APK | `dist/TVLive-v2.1.1-release.apk`（约 4.4 MB） | 2.1.1 / versionCode 211 | SHA-256 `f05c9d6a4abe951c6bacc0b7b8706dc3e19ba17bbf88523af499914b4260010d` |
-| 私有版 APK（含预置订阅） | `dist/TVLive-v2.1.1-private-release.apk`（约 4.4 MB） | 2.1.1 / versionCode 211 | SHA-256 `5a4ac7a633cd8cdeb0722d418397ae51ceea70c35520fa45046d415b86ba22d6` |
+| 公开版 APK | `dist/TVLive-v2.1.2-release.apk`（约 4.4 MB） | 2.1.2 / versionCode 212 | SHA-256 `a66d110994074732bf7ab4035acd2c7d159e35e71c8d8e6bf2d5187ec5d11cd0` |
+| 私有版 APK（含预置订阅） | `dist/TVLive-v2.1.2-private-release.apk`（约 4.4 MB） | 2.1.2 / versionCode 212 | SHA-256 `f4ea887014ca15669d23d404340445ffd1de92850235f187280af0c8271a7ce7` |
 | 源码 | origin `https://github.com/zdx8/TVLive.git`；gitea `ssh://gitea/ZYG/TVLive.git` | main 最新提交 | 工作区 `git status --porcelain` 为空 |
 | 官网静态页 | `docs/`（`index.html` / `style.css` / `images/` / `.nojekyll`） | 与 main 同步 | 无 `CNAME`，项目 Pages 形态 |
 
 - 发布状态：`docs/index.html` 的下载按钮指向 `https://github.com/zdx8/TVLive/releases/latest`，
-  仓库已有 tag `v2.0.0` / `v2.1.0` / `v2.1.1`，Release 资产已上传。
-- v2.1.1 前的历史已被重建脱敏（单提交 `e670f66`），**v1.x 历史不在本仓库**。
+  仓库已有 tag `v2.0.0` / `v2.1.0` / `v2.1.1`，Release 资产已上传；v2.1.2 待发布。私有包更新资产另放 Gitea 公开仓库 `ZYG/TVLive-Updates`（v2.1.2 已上传）。
+- v2.1.2 前的历史已被重建脱敏（单提交 `e670f66`），**v1.x 历史不在本仓库**。
 
 ## 3. 怎么跑起来
 
@@ -34,23 +34,23 @@ cd "<项目根目录>/TVLive"
 source .env.sh
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 ./gradlew :app:assembleRelease     # 公开包 → app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest   # 单测（源码内 131 个 @Test / 13 个测试文件）
+./gradlew :app:testDebugUnitTest   # 单测（源码内 136 个 @Test / 14 个测试文件）
 scripts/build-private-apk.sh       # 私有包 → dist/TVLive-v<ver>-private-release.apk
 ```
 
 安装与启动（入口是 `PlaybackActivity`，同时挂 `LAUNCHER` 与 `LEANBACK_LAUNCHER`）：
-`adb connect <电视IP>:5555 && adb install -r dist/TVLive-v2.1.1-release.apk`，
+`adb connect <电视IP>:5555 && adb install -r dist/TVLive-v2.1.2-release.apk`，
 再 `adb shell am start -n com.tvlive.tv/.player.PlaybackActivity`。
 
 - 前置条件：JDK 17；SDK 必须含 `platform-35` 与 `build-tools 34.0.0`
   （`app/build.gradle.kts` 硬编码 `buildToolsVersion = "34.0.0"`）；`keystore.properties` 缺失时仍能出包，
   但 release APK 未签名。
 - 2026-11-22 已在 JDK 17 + Android SDK（`~/Library/Android/sdk`，build-tools 34.0.0）下实测
-  `./gradlew :app:testDebugUnitTest :app:assembleRelease` 全绿；dist/ 内 v2.1.1 两个包为本机重打产物。
+  `./gradlew :app:testDebugUnitTest :app:assembleRelease` 全绿；dist/ 内 v2.1.2 两个包为本机重打产物。
 
 ## 4. 架构与关键设计
 
-`app/src/main/java/com/tvlive/tv/`：52 个 Kotlin 文件 / 9,287 行，0 个 Java 文件。
+`app/src/main/java/com/tvlive/tv/`：54 个 Kotlin 文件 / 9,357 行，0 个 Java 文件。
 
 ```
 com.tvlive.tv/
@@ -85,9 +85,9 @@ flowchart LR
 
 已完成：M3U/M3U8 订阅（远程/本地/单流直连）、扫码填源、多订阅切换与原地合并刷新、频道抽屉与
 数字键跳台、长按收藏、重连退避 + 15s 看门狗、连败跳台、应用内自更新（仅手动触发）、边到边 UI、
-私有包注入机制、R8 + 资源压缩（release 4.3 MB）、13 个测试文件共 131 个 `@Test`。
+私有包注入机制、R8 + 资源压缩（release 4.3 MB）、14 个测试文件共 136 个 `@Test`。
 
-未完成：录制、多画面。EPG 节目单已在 v2.1.0 完成；v2.1.1 修复了更新弹窗说明撑满屏幕、按钮不可按的问题。
+未完成：录制、多画面。EPG 节目单已在 v2.1.0 完成；v2.1.1 修复了更新弹窗说明撑满屏幕、按钮不可按的问题；v2.1.2 私有包更新源改走本机 Gitea，并修复公开包误下载私有 APK 的订阅泄露隐患。
 
 已知问题（严重度）：
 
@@ -97,7 +97,7 @@ flowchart LR
   `test-on-device.sh`；README 说的「NAS 清单 + GitHub 双模式」在 `AppConfig.kt` 只有
   `UPDATE_MANIFEST_URL`（GitHub `releases/latest`）一个常量。
 - **边缘**：`AppConfig.kt:41` 注释写更新附件名为 `*-public-release.apk`，实际发的是
-  `TVLive-v2.1.1-release.apk`（注释已修正）；`NOTICE` 不再引用不存在的 THIRD-PARTY-LICENSES。
+  `TVLive-v2.1.2-release.apk`（注释已修正）；`NOTICE` 不再引用不存在的 THIRD-PARTY-LICENSES。
 - **边缘**：`scripts/diagnose.sh`、`scripts/test-on-device.sh` 启动的是 `exported="false"` 的
   `MainActivity`；非 root 设备上该 `am start` 能否成功：未验证：本次未连设备。
 - **边缘**：Room 数据库文件名仍是历史名 `itellytv.db`（`TVLiveDatabase.kt:33`），与应用名不一致。
@@ -150,30 +150,30 @@ kotlinx-serialization-json 1.6.3；ZXing core 3.5.3；JUnit 4.13.2（仅测试�
 ```bash
 # 1. 产物哈希
 shasum -a 256 dist/*.apk
-# 预期：5a4ac7a6…22d6  TVLive-v2.1.1-private-release.apk
-#       f05c9d6a…0010d  TVLive-v2.1.1-release.apk
+# 预期：f4ea8870…1a7ce7  TVLive-v2.1.2-private-release.apk
+#       a66d1109…11cd0  TVLive-v2.1.2-release.apk
 # 2. 包名与版本
 "$HOME/Library/Android/sdk/build-tools/34.0.0/aapt2" \
-  dump badging dist/TVLive-v2.1.1-release.apk | head -3
-# 预期：package: name='com.tvlive.tv' versionCode='211' versionName='2.1.1' … compileSdkVersion='35'
+  dump badging dist/TVLive-v2.1.2-release.apk | head -3
+# 预期：package: name='com.tvlive.tv' versionCode='212' versionName='2.1.2' … compileSdkVersion='35'
 #       sdkVersion:'23' / targetSdkVersion:'35'
 # 3. 两个包的实质差异
-unzip -l dist/TVLive-v2.1.1-release.apk | grep private-subscriptions          # 预期：无输出（exit 1）
-unzip -l dist/TVLive-v2.1.1-private-release.apk | grep private-subscriptions  # 预期：84 字节的 assets/private-subscriptions.json
+unzip -l dist/TVLive-v2.1.2-release.apk | grep private-subscriptions          # 预期：无输出（exit 1）
+unzip -l dist/TVLive-v2.1.2-private-release.apk | grep private-subscriptions  # 预期：84 字节的 assets/private-subscriptions.json
 # 4. 签名证书
 "$HOME/Library/Android/sdk/build-tools/34.0.0/apksigner" \
-  verify --print-certs dist/TVLive-v2.1.1-release.apk | grep 'certificate DN'
+  verify --print-certs dist/TVLive-v2.1.2-release.apk | grep 'certificate DN'
 # 预期：Signer #1 certificate DN: CN=iTellyTV, OU=zdx8, O=zdx8, L=Beijing, ST=Beijing, C=CN
 # 5. 版本与提交
-git tag && git log --oneline -1   # 预期：v2.0.0 / v2.1.0 / v2.1.1，最新为 v2.1.1 发布提交
+git tag && git log --oneline -1   # 预期：v2.0.0 / v2.1.0 / v2.1.1（/ v2.1.2 发布后）
 
 # 6. 工作区干净度
 git status --porcelain | wc -l    # 预期：0
 
 # 7. 代码规模与测试数
-find app/src -name '*.kt' | wc -l                                   # 预期：52
-find app/src -name '*.kt' -print0 | xargs -0 wc -l | tail -1        # 预期：9287 total
-grep -rh '@Test' app/src/test | wc -l                               # 预期：131
+find app/src -name '*.kt' | wc -l                                   # 预期：54
+find app/src -name '*.kt' -print0 | xargs -0 wc -l | tail -1        # 预期：9357 total
+grep -rh '@Test' app/src/test | wc -l                               # 预期：136
 
 # 8. 构建与单测（2026-11-22 实测）
 source .env.sh && ./gradlew :app:assembleRelease :app:testDebugUnitTest
@@ -193,6 +193,7 @@ source .env.sh && ./gradlew :app:assembleRelease :app:testDebugUnitTest
 
 | 日期 | 版本 | 改了什么 |
 |---|---|---|
+| 2026-11-22 | v2.1.2 | 私有包更新源改走 Gitea 公开更新仓库；新增 UpdateAssetPicker 严格区分公开/私有 APK，消除公开包误装私有包的订阅泄露隐患；更新地址构建期注入，内网 IP 不进公开源码 |
 | 2026-11-22 | v2.1.1 | 修复更新弹窗说明撑满屏幕导致按钮不可按；ReleaseNotesFormatter 清洗+限长；弹窗说明区改为可滚动定高；打 tag `v2.1.1` |
 | 2026-11-22 | v2.1.0 | EPG 电子节目单 + bug 修复 + 脱敏重建历史，打 tag `v2.1.0` |
 | 2026-10-23 | v2.0.0 | `fb8cd08` 电视直播 TVLive v2.0.0（历史已脱敏重建为 `e670f66`） |

@@ -31,14 +31,26 @@ android {
         targetSdk = 35       // Android 15 (Vanilla Ice Cream)
         // versionCode 与主版本对齐（v2.x → 2xx）：必须大于 1.2.x 时代的 22，
         // 否则老设备覆盖安装会被系统判降级拒绝（INSTALL_FAILED_VERSION_DOWNGRADE）。
-        versionCode = 211
-        versionName = "2.1.1"
+        versionCode = 212
+        versionName = "2.1.2"
 
         // 私有包开关：`./gradlew assembleRelease -PprivateSubs=true` 时，
         // 挂载 app/assets-private/（gitignore，含作者订阅 private-subscriptions.json）
         // 参与打包，启动 seed 读它预置订阅。公开构建不挂载 = 纯净包，永不泄漏。
         val privateSubs = project.findProperty("privateSubs")?.toString() == "true"
         buildConfigField("boolean", "INCLUDE_PRIVATE_SUBS", privateSubs.toString())
+
+        // 更新源：公开包固定 GitHub releases/latest；私有包走本机 Gitea
+        // 公开更新仓库。地址由 .env.sh 的 TVLIVE_UPDATE_URL 注入——内网 IP
+        // 不写进公开源码。未注入时私有包自更新自动禁用（安全降级）。
+        val manifestUrl = if (privateSubs) {
+            // 由 build-private-apk.sh 从本地 .env.sh 读出后以 -P 传入：
+            // Gradle daemon 会缓存环境变量，System.getenv 可能拿到旧值。
+            project.findProperty("privateUpdateUrl")?.toString() ?: ""
+        } else {
+            "https://api.github.com/repos/zdx8/TVLive/releases/latest"
+        }
+        buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$manifestUrl\"")
     }
 
     sourceSets {
