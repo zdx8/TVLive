@@ -21,14 +21,24 @@
         android:textColor="#FFFFFF"
         android:textSize="26sp" />
 
-    <TextView
-        android:id="@+id/update_message"
+    <!-- 更新说明必须封顶：Release body 原样展开曾把按钮挤出屏幕，导致无法更新。
+         固定高度 + 可聚焦 ScrollView：遥控器上键可滚说明，按钮始终在下方可见。 -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="150dp"
         android:layout_marginTop="12dp"
-        android:lineSpacingExtra="5dp"
-        android:textColor="#C3BECB"
-        android:textSize="16sp" />
+        android:fillViewport="false"
+        android:focusable="true"
+        android:scrollbars="vertical">
+
+        <TextView
+            android:id="@+id/update_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="5dp"
+            android:textColor="#C3BECB"
+            android:textSize="16sp" />
+    </ScrollView>
 
     <ProgressBar
         android:id="@+id/update_progress"

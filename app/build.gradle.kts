@@ -31,8 +31,8 @@ android {
         targetSdk = 35       // Android 15 (Vanilla Ice Cream)
         // versionCode 与主版本对齐（v2.x → 2xx）：必须大于 1.2.x 时代的 22，
         // 否则老设备覆盖安装会被系统判降级拒绝（INSTALL_FAILED_VERSION_DOWNGRADE）。
-        versionCode = 210
-        versionName = "2.1.0"
+        versionCode = 211
+        versionName = "2.1.1"
 
         // 私有包开关：`./gradlew assembleRelease -PprivateSubs=true` 时，
         // 挂载 app/assets-private/（gitignore，含作者订阅 private-subscriptions.json）

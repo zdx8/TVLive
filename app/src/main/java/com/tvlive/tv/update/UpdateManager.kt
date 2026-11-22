@@ -198,11 +198,12 @@ class UpdateManager(private val activity: Activity) {
         val confirm = d.findViewById<View>(R.id.btn_update_now)
 
         title.text = "发现新版本 ${info.versionName}"
+        val notes = ReleaseNotesFormatter.format(info.notes)
         message.text = buildString {
             if (info.size > 0) append("安装包 ${info.size / 1024 / 1024} MB")
-            if (info.notes.isNotBlank()) {
+            if (notes.isNotBlank()) {
                 if (isNotEmpty()) appendLine().appendLine()
-                append(info.notes)
+                append(notes)
             }
             appendLine().appendLine()
             append("下载完成后会弹出系统安装界面，按遥控器「安装」即可。")
