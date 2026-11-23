@@ -18,13 +18,17 @@ Android TV 上的 IPTV / 直播播放器（Kotlin + Media3/ExoPlayer，包名 `c
 | 源码 | origin `https://github.com/zdx8/TVLive.git`；gitea 自建远端（SSH，真实地址见本机 `git remote -v`） | main 最新提交 | 工作区 `git status --porcelain` 为空 |
 | 官网静态页 | `docs/`（`index.html` / `style.css` / `images/` / `.nojekyll`） | 与 main 同步 | 无 `CNAME`，项目 Pages 形态 |
 
-- 发布状态（2026-11-24 实测）：`docs/index.html` 的下载按钮指向 `https://github.com/zdx8/TVLive/releases/latest`。
-  - GitHub `origin/main` = `d120ff4`（v2.1.1）；**本地 main 领先 3 个提交**（`61e7627` = v2.1.2、
-    `08ee411` = v2.1.3、末位为发布前脱敏复核与文档订正），尚未 push。Gitea `main` 同样停在 `d120ff4`。
-  - 已发布 tag：`v2.0.0`（→ `e670f66`）、`v2.1.0`（→ `e5ba7d0`）、`v2.1.1`（→ `d120ff4`）；
-    `v2.1.2` / `v2.1.3` **尚未创建**。
+- 发布状态（2026-11-24 已发布）：`docs/index.html` 的下载按钮指向 `https://github.com/zdx8/TVLive/releases/latest`
+  （稳定链接，自动指向最新 Release，无需改站点）。
+  - GitHub `origin/main` = Gitea `main` = `9ff0ba1`（发布前脱敏复核与文档订正）之后的文档提交，**已 push**；
+    发布 tag `v2.1.3` 指向 `9ff0ba1`。
+  - 已发布 tag（annotated，GitHub 与 Gitea 一致）：`v2.0.0`（→ `e670f66`）、`v2.1.0`（→ `e5ba7d0`）、
+    `v2.1.1`（→ `d120ff4`）、`v2.1.2`（→ `61e7627`）、`v2.1.3`（→ `9ff0ba1`）。
+  - GitHub Release `v2.1.2` / `v2.1.3` 已建，各挂公开 APK + 同名 `.sha256`；
+    `releases/latest` = v2.1.3，实测 `UpdateAssetPicker` 只选中 `TVLive-v2.1.3-release.apk`。
   - 私有包更新资产放在 Gitea 上的独立更新仓库（仓库名见本机 `.env.sh` 的 `TVLIVE_UPDATE_URL`），
-    v2.1.2 私有包已上传；v2.1.3 私有包待上传。
+    v2.1.2 / v2.1.3 私有包均已上传；匿名下载实测 200 且 sha256 与本地一致。
+  - 官网 Pages `https://zdx8.github.io/TVLive/` 实测 HTTP 200，status=built。
 - v2.1.3 前的历史已被重建脱敏（单提交 `e670f66`），**v1.x 历史不在本仓库**（Gitea 上仍存在
   `v1.0.0` / `v1.1.0` / `v1.2.0` 三个 tag，处置见 §5 已知问题）。
 
@@ -98,17 +102,21 @@ flowchart LR
 
 已知问题（严重度）：
 
-- **影响发布**：公开 GitHub Release `v2.1.0` / `v2.1.1` 上挂着 `*-private-release.apk` 资产，而私有包内嵌
+- **已处理**：公开 GitHub Release `v2.1.0` / `v2.1.1` 上原挂着 `*-private-release.apk` 资产，而私有包内嵌
   `assets/private-subscriptions.json`（含个人订阅地址）→ 任何人都能从公开 Release 下载到私有包并读出该地址。
-  v2.1.2 起用 `UpdateAssetPicker` 严格区分公开/私有资产，解决的是「公开包误下私有包」；
-  已发布 Release 上的私有包资产本身尚未删除（对外动作，见 §10 待放行清单）。
+  2026-11-24 已删除这两个私有包资产（HTTP 204），三个 Release 现在只剩公开 APK。
+  另注：v2.1.2 起用 `UpdateAssetPicker` 严格区分公开/私有资产，解决的是「公开包误下私有包」；
+  删除资产同时让 v2.1.0/v2.1.1 旧客户端的「取第一个 `-release.apk` 资产」逻辑回到正确行为。
 - **影响发布**：Gitea 远端存在 `v1.0.0` / `v1.1.0` / `v1.2.0` 三个 tag，其提交作者是真实姓名与邮箱。
   本地已删除这三个 tag，但 `git fetch gitea --tags` 会把它们重新拉回，随后的 `git push origin --tags`
   会把它们推上公开 GitHub。仓库 pre-push 闸门此前只扫 `HEAD` 可达提交，查不到 tag-only 链；
   2026-11-24 已改为按本次推送的每个 ref 取新提交。**v1.x 不得再推到公开仓库。**
-- **影响发布**：`scripts/build-private-apk.sh` 的用法提示曾写死真实设备内网地址，该行随 `d120ff4`
-  已发布在 GitHub。2026-11-24 起改为占位符 `<电视IP>:5555`；已发布历史里的旧值要重写历史才能彻底抹除
-  （对外动作，见 §10 待放行清单）。
+- **遗留**：`scripts/build-private-apk.sh` 的用法提示曾写死真实设备内网地址，该行随 `d120ff4`
+  已发布在 GitHub。2026-11-24 起改为占位符 `<电视IP>:5555`；**已发布历史里的旧值仍在**，要彻底抹除
+  只能重写历史 + force-push（会改 v2.0.0/v2.1.0/v2.1.1 三个 tag 的指向），未执行。
+- **遗留**：Gitea 更新仓库在 Gitea 实例内是 `private: false`（电视端要匿名拉取更新清单，不能改成私有）。
+  该实例只在 Tailscale / WireGuard 内网可达，未发现公网入口；但**私有包内的订阅地址随包分发**，
+  拿到私有包的人就能读到。
 - **影响体验**：README 引用的 `docs/扫码填源-设计方案.md` 不存在（`docs/` 只剩官网文件）。
 - **影响体验**：`UpdateManager.kt:33` 与 README 都提到 `scripts/make_update_manifest.py`，
   实际 `scripts/` 只有 `build-private-apk.sh` / `diagnose.sh` / `make_wallpaper.py` /
@@ -222,22 +230,27 @@ git fsck --unreachable --no-progress 2>/dev/null | grep -c 'unreachable commit' 
 
 ### v2.1.2 / v2.1.3 发布待放行清单
 
-以下全部是**对外动作**，等根哥明确说「可以发」才执行；每一步执行前重跑 §9 第 9 条脱敏复核。
+### 发布执行记录（2026-11-24，根哥放行后执行）
 
-1. 删除公开 GitHub Release `v2.1.0` / `v2.1.1` 上的 `*-private-release.apk` 资产（清掉个人订阅地址外泄）。
-2. 决定是否重写已发布历史以抹掉旧设备内网地址 —— 重写需要 force-push，v2.0.0/v2.1.0/v2.1.1 三个 tag
-   会改指向，**不重写则该地址永久留在 GitHub 历史里**。
-3. push 源码：`git push origin main` 与 `git push gitea main`（走仓库 pre-push 闸门）。
-4. 打 tag：`v2.1.2` → `61e7627`；`v2.1.3` → 脱敏修订后的 tip（`main` 当前 HEAD，versionCode 仍为 213）。
-5. 建 GitHub Release `v2.1.2` / `v2.1.3`，附件用 `dist/` 下对应 APK + 同名 `.sha256`。
-6. 上传 Gitea 私有更新资产（v2.1.2 / v2.1.3 私有包）到 Gitea 更新仓库。
-7. 改线上更新源 / 官网下载按钮指向新 Release。
+| # | 动作 | 实测结果 |
+|---|---|---|
+| 1 | 删除公开 GitHub Release `v2.1.0` / `v2.1.1` 上的 `*-private-release.apk` 资产 | HTTP 204 ×2；三个 Release 现在只剩公开 APK ✓ |
+| 2 | **重写已发布历史以抹掉旧设备内网地址** | **未执行** —— 需 force-push 且会改三个已发布 tag 的指向，属独立决策 |
+| 3 | push 源码到 GitHub 与 Gitea | `d120ff4..9ff0ba1 main -> main` ×2；pre-push 闸门 PASS ✓ |
+| 4 | 打 annotated tag `v2.1.2` / `v2.1.3` 并推到两端 | 显式点名推送（未用 `--tags`）；GitHub 与 Gitea tag 列表一致，**GitHub 上 v1.x 为 0** ✓ |
+| 5 | 建 GitHub Release `v2.1.2` / `v2.1.3`，挂公开 APK + `.sha256` | HTTP 201 ×2；资产上传 HTTP 201 ×4；从 Release 下载实测 sha256 与 `.sha256` 一致 ✓ |
+| 6 | 上传 v2.1.3 私有包 + `.sha256` 到 Gitea 更新仓库 | HTTP 201 ×2；`releases/latest` = v2.1.3；**匿名**下载 200 且 sha256 一致 ✓ |
+| 7 | 改线上更新源 / 官网下载按钮 | **无需改** —— 按钮指向 `releases/latest`（自动指向 v2.1.3）；`docs/` 无写死版本号；Pages status=built、实测 HTTP 200 ✓ |
+
+发布后复核：`releases/latest` 模拟一次应用更新检查 → `UpdateAssetPicker` 只选中
+`TVLive-v2.1.3-release.apk`（`.sha256` 资产因不以 `-release.apk` 结尾被正确排除）。
 
 ## 11. 变更历史
 
 | 日期 | 版本 | 改了什么 |
 |---|---|---|
-| 2026-11-24 | — | 发布准备：脱敏复核（脚本里的真实设备内网地址改为占位符、私有端点从公开文档去标识）、产物校验值订正、发布状态与变更历史订正；未发布 |
+| 2026-11-24 | v2.1.3 | **已发布**：删除公开 Release 上的两个私有包资产（个人订阅地址外泄已封）、源码与两个 tag 推到 GitHub 与 Gitea、GitHub Release v2.1.2/v2.1.3 建好并挂公开 APK + `.sha256`、Gitea 私有更新通道上传 v2.1.3 私有包；发布后复核 sha256 与更新通道选取均正确 |
+| 2026-11-24 | — | 发布准备：脱敏复核（脚本里的真实设备内网地址改为占位符、私有端点从公开文档去标识）、产物校验值订正、发布状态与变更历史订正 |
 | 2026-11-22 | v2.1.3 | EPG 加载优化：GUIDE 弹窗主动加载并显示进度、并发合并请求；缓存改为 EpgIndex 二进制序列化（14.8MB→2.6MB，冷启动 458ms→14ms）；边下边解析免全量写盘；多源并发取首个成功。139 测试全绿，未发布 |
 | 2026-11-22 | v2.1.2 | 私有包更新源改走 Gitea 公开更新仓库；新增 UpdateAssetPicker 严格区分公开/私有 APK，消除公开包误装私有包的订阅泄露隐患；更新地址构建期注入，内网 IP 不进公开源码 |
 | 2026-11-22 | v2.1.1 | 修复更新弹窗说明撑满屏幕导致按钮不可按；ReleaseNotesFormatter 清洗+限长；弹窗说明区改为可滚动定高；打 tag `v2.1.1` |
