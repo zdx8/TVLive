@@ -1,6 +1,7 @@
 # TVLive 交接文档
 
 > 补写日期：2026-10-24（历史项目补档，非交付时原始文档）
+> 修订：2026-11-24 发布前复核 —— 脱敏检查、产物校验值、发布状态、变更历史订正。本次修订**未做任何对外动作**（未 push / 未打 tag / 未建 Release / 未上传更新源）。
 
 ## 1. 一句话结论
 
@@ -12,14 +13,20 @@ Android TV 上的 IPTV / 直播播放器（Kotlin + Media3/ExoPlayer，包名 `c
 
 | 交付物 | 路径 | 版本 | 校验 |
 |---|---|---|---|
-| 公开版 APK | `dist/TVLive-v2.1.3-release.apk`（约 4.4 MB） | 2.1.3 / versionCode 213 | SHA-256 `da0ec2605c7f243b880670f89e220eab6bdd0b2220270828a1a587f7fc7ad5ee` |
-| 私有版 APK（含预置订阅） | `dist/TVLive-v2.1.3-private-release.apk`（约 4.4 MB） | 2.1.3 / versionCode 213 | SHA-256 `d340f703a7cab089988ad8528d4692ef681f18a6260139153bf505c3183715f1` |
-| 源码 | origin `https://github.com/zdx8/TVLive.git`；gitea `ssh://gitea/ZYG/TVLive.git` | main 最新提交 | 工作区 `git status --porcelain` 为空 |
+| 公开版 APK | `dist/TVLive-v2.1.3-release.apk`（4,375,598 字节） | 2.1.3 / versionCode 213 | SHA-256 `6dcd999b8b0286e5591d564973740d0326045764233df2ec7892f0cce2007159` |
+| 私有版 APK（含预置订阅） | `dist/TVLive-v2.1.3-private-release.apk`（4,376,425 字节） | 2.1.3 / versionCode 213 | SHA-256 `962123ce79985f34694494658e5de7789b704508859a5a8c2423e4bf2442c207` |
+| 源码 | origin `https://github.com/zdx8/TVLive.git`；gitea 自建远端（SSH，真实地址见本机 `git remote -v`） | main 最新提交 | 工作区 `git status --porcelain` 为空 |
 | 官网静态页 | `docs/`（`index.html` / `style.css` / `images/` / `.nojekyll`） | 与 main 同步 | 无 `CNAME`，项目 Pages 形态 |
 
-- 发布状态：`docs/index.html` 的下载按钮指向 `https://github.com/zdx8/TVLive/releases/latest`，
-  仓库已有 tag `v2.0.0` / `v2.1.0` / `v2.1.1`，Release 资产已上传；v2.1.3 待发布。私有包更新资产另放 Gitea 公开仓库 `ZYG/TVLive-Updates`（v2.1.2 已上传）。
-- v2.1.3 前的历史已被重建脱敏（单提交 `e670f66`），**v1.x 历史不在本仓库**。
+- 发布状态（2026-11-24 实测）：`docs/index.html` 的下载按钮指向 `https://github.com/zdx8/TVLive/releases/latest`。
+  - GitHub `origin/main` = `d120ff4`（v2.1.1）；**本地 main 领先 3 个提交**（`61e7627` = v2.1.2、
+    `08ee411` = v2.1.3、末位为发布前脱敏复核与文档订正），尚未 push。Gitea `main` 同样停在 `d120ff4`。
+  - 已发布 tag：`v2.0.0`（→ `e670f66`）、`v2.1.0`（→ `e5ba7d0`）、`v2.1.1`（→ `d120ff4`）；
+    `v2.1.2` / `v2.1.3` **尚未创建**。
+  - 私有包更新资产放在 Gitea 上的独立更新仓库（仓库名见本机 `.env.sh` 的 `TVLIVE_UPDATE_URL`），
+    v2.1.2 私有包已上传；v2.1.3 私有包待上传。
+- v2.1.3 前的历史已被重建脱敏（单提交 `e670f66`），**v1.x 历史不在本仓库**（Gitea 上仍存在
+  `v1.0.0` / `v1.1.0` / `v1.2.0` 三个 tag，处置见 §5 已知问题）。
 
 ## 3. 怎么跑起来
 
@@ -91,6 +98,17 @@ flowchart LR
 
 已知问题（严重度）：
 
+- **影响发布**：公开 GitHub Release `v2.1.0` / `v2.1.1` 上挂着 `*-private-release.apk` 资产，而私有包内嵌
+  `assets/private-subscriptions.json`（含个人订阅地址）→ 任何人都能从公开 Release 下载到私有包并读出该地址。
+  v2.1.2 起用 `UpdateAssetPicker` 严格区分公开/私有资产，解决的是「公开包误下私有包」；
+  已发布 Release 上的私有包资产本身尚未删除（对外动作，见 §10 待放行清单）。
+- **影响发布**：Gitea 远端存在 `v1.0.0` / `v1.1.0` / `v1.2.0` 三个 tag，其提交作者是真实姓名与邮箱。
+  本地已删除这三个 tag，但 `git fetch gitea --tags` 会把它们重新拉回，随后的 `git push origin --tags`
+  会把它们推上公开 GitHub。仓库 pre-push 闸门此前只扫 `HEAD` 可达提交，查不到 tag-only 链；
+  2026-11-24 已改为按本次推送的每个 ref 取新提交。**v1.x 不得再推到公开仓库。**
+- **影响发布**：`scripts/build-private-apk.sh` 的用法提示曾写死真实设备内网地址，该行随 `d120ff4`
+  已发布在 GitHub。2026-11-24 起改为占位符 `<电视IP>:5555`；已发布历史里的旧值要重写历史才能彻底抹除
+  （对外动作，见 §10 待放行清单）。
 - **影响体验**：README 引用的 `docs/扫码填源-设计方案.md` 不存在（`docs/` 只剩官网文件）。
 - **影响体验**：`UpdateManager.kt:33` 与 README 都提到 `scripts/make_update_manifest.py`，
   实际 `scripts/` 只有 `build-private-apk.sh` / `diagnose.sh` / `make_wallpaper.py` /
@@ -150,8 +168,8 @@ kotlinx-serialization-json 1.6.3；ZXing core 3.5.3；JUnit 4.13.2（仅测试�
 ```bash
 # 1. 产物哈希
 shasum -a 256 dist/*.apk
-# 预期：d340f703…3715f1  TVLive-v2.1.3-private-release.apk
-#       da0ec260…ad5ee  TVLive-v2.1.3-release.apk
+# 预期：962123ce…4c207  TVLive-v2.1.3-private-release.apk
+#       6dcd999b…07159  TVLive-v2.1.3-release.apk
 # 2. 包名与版本
 "$HOME/Library/Android/sdk/build-tools/34.0.0/aapt2" \
   dump badging dist/TVLive-v2.1.3-release.apk | head -3
@@ -163,9 +181,13 @@ unzip -l dist/TVLive-v2.1.3-private-release.apk | grep private-subscriptions  # 
 # 4. 签名证书
 "$HOME/Library/Android/sdk/build-tools/34.0.0/apksigner" \
   verify --print-certs dist/TVLive-v2.1.3-release.apk | grep 'certificate DN'
-# 预期：Signer #1 certificate DN: CN=iTellyTV, OU=zdx8, O=zdx8, L=Beijing, ST=Beijing, C=CN
+# 预期：Signer #1 certificate DN: CN=iTellyTV, OU=zdx8, O=zdx8, L=Beijing, ST=Beijing, C=DN
+#       Verified using v1 scheme (JAR signing): true
+#       Verified using v2 scheme (APK Signature Scheme v2): true
+#       Verified using v3 scheme (APK Signature Scheme v3): false
+#       （公开包与私有包同一证书：证书 SHA-256 5a5dc4d3…2a90）
 # 5. 版本与提交
-git tag && git log --oneline -1   # 预期：… / v2.1.2（/ v2.1.3 发布后）
+git tag && git log --oneline -1   # 预期：v2.0.0 / v2.1.0 / v2.1.1（v2.1.2 / v2.1.3 发布后追加） / …
 
 # 6. 工作区干净度
 git status --porcelain | wc -l    # 预期：0
@@ -178,6 +200,15 @@ grep -rh '@Test' app/src/test | wc -l                               # 预期：1
 # 8. 构建与单测（2026-11-22 实测）
 source .env.sh && ./gradlew :app:assembleRelease :app:testDebugUnitTest
 # 预期：BUILD SUCCESSFUL，产物 app/build/outputs/apk/release/app-release.apk
+
+# 9. 发布前脱敏复核（2026-11-24 实测，见 §5 已知问题）
+#    项目专属敏感词（真实姓名 / 个人域名 / 内网地址）只放在本机 ~/bin/gh-pii-check 里，
+#    不写进本仓库 —— 免得「要扫的词」本身又出现在公开文件里。
+git cat-file --batch-all-objects --batch-check='%(objecttype) %(objectname)' \
+  | awk '$1=="commit"{print $2}' | git log --no-walk --stdin --format='%an <%ae>' \
+  | grep -Ev 'users\.noreply\.github\.com'          # 预期：无输出
+"$HOME/bin/gh-pii-check" --history .                    # 预期：PASS: 未发现个人信息/敏感文件
+git fsck --unreachable --no-progress 2>/dev/null | grep -c 'unreachable commit'  # 预期：0
 ```
 
 ## 10. 下一步建议
@@ -189,15 +220,30 @@ source .env.sh && ./gradlew :app:assembleRelease :app:testDebugUnitTest
 4. **DB 改名**：`itellytv.db` → `tvlive.db` 需一次 Room 迁移（动 `TVLiveDatabase.kt`）；
    若加多画面，从 `data/model/Entities.kt`、`data/source/Daos.kt` 加表，`ui/` 加面板。
 
+### v2.1.2 / v2.1.3 发布待放行清单
+
+以下全部是**对外动作**，等根哥明确说「可以发」才执行；每一步执行前重跑 §9 第 9 条脱敏复核。
+
+1. 删除公开 GitHub Release `v2.1.0` / `v2.1.1` 上的 `*-private-release.apk` 资产（清掉个人订阅地址外泄）。
+2. 决定是否重写已发布历史以抹掉旧设备内网地址 —— 重写需要 force-push，v2.0.0/v2.1.0/v2.1.1 三个 tag
+   会改指向，**不重写则该地址永久留在 GitHub 历史里**。
+3. push 源码：`git push origin main` 与 `git push gitea main`（走仓库 pre-push 闸门）。
+4. 打 tag：`v2.1.2` → `61e7627`；`v2.1.3` → 脱敏修订后的 tip（`main` 当前 HEAD，versionCode 仍为 213）。
+5. 建 GitHub Release `v2.1.2` / `v2.1.3`，附件用 `dist/` 下对应 APK + 同名 `.sha256`。
+6. 上传 Gitea 私有更新资产（v2.1.2 / v2.1.3 私有包）到 Gitea 更新仓库。
+7. 改线上更新源 / 官网下载按钮指向新 Release。
+
 ## 11. 变更历史
 
 | 日期 | 版本 | 改了什么 |
 |---|---|---|
-| 2026-11-22 | v2.1.3 | EPG 加载优化：GUIDE 弹窗主动加载并显示进度、并发合并请求；缓存改为 EpgIndex 二进制序列化（14.8MB→2.6MB，冷启动 458ms→14ms）；边下边解析免全量写盘；多源并发取首个成功。139 测试全绿，未发布 |\n| 2026-11-22 | v2.1.2 | 私有包更新源改走 Gitea 公开更新仓库；新增 UpdateAssetPicker 严格区分公开/私有 APK，消除公开包误装私有包的订阅泄露隐患；更新地址构建期注入，内网 IP 不进公开源码 |
+| 2026-11-24 | — | 发布准备：脱敏复核（脚本里的真实设备内网地址改为占位符、私有端点从公开文档去标识）、产物校验值订正、发布状态与变更历史订正；未发布 |
+| 2026-11-22 | v2.1.3 | EPG 加载优化：GUIDE 弹窗主动加载并显示进度、并发合并请求；缓存改为 EpgIndex 二进制序列化（14.8MB→2.6MB，冷启动 458ms→14ms）；边下边解析免全量写盘；多源并发取首个成功。139 测试全绿，未发布 |
+| 2026-11-22 | v2.1.2 | 私有包更新源改走 Gitea 公开更新仓库；新增 UpdateAssetPicker 严格区分公开/私有 APK，消除公开包误装私有包的订阅泄露隐患；更新地址构建期注入，内网 IP 不进公开源码 |
 | 2026-11-22 | v2.1.1 | 修复更新弹窗说明撑满屏幕导致按钮不可按；ReleaseNotesFormatter 清洗+限长；弹窗说明区改为可滚动定高；打 tag `v2.1.1` |
 | 2026-11-22 | v2.1.0 | EPG 电子节目单 + bug 修复 + 脱敏重建历史，打 tag `v2.1.0` |
-| 2026-10-23 | v2.0.0 | `fb8cd08` 电视直播 TVLive v2.0.0（历史已脱敏重建为 `e670f66`） |
-| 2026-10-23 | — | `7895ada` 官网主题色改 logo 翠绿 #27BF84，hero 展示应用图标 |
-| 2026-10-23 | — | `ffdb281` 官网主题色统一为 logo 蓝 #275CBF |
-| 2026-10-23 | — | `27c21b1` logo/横幅改矢量 SVG，修 hero 布局错位 |
-| 2026-10-23 | — | `1a8163e` style.css 加版本参数避免 CDN 缓存旧主题色（当前 HEAD） |
+| 2026-10-23 | v2.0.0 | 电视直播 TVLive v2.0.0（历史已脱敏重建为 `e670f66`，tag `v2.0.0` 指向它） |
+| 2026-10-23 | — | 官网主题色改 logo 翠绿 #27BF84，hero 展示应用图标 |
+| 2026-10-23 | — | 官网主题色统一为 logo 蓝 #275CBF |
+| 2026-10-23 | — | logo/横幅改矢量 SVG，修 hero 布局错位 |
+| 2026-10-23 | — | style.css 加版本参数避免 CDN 缓存旧主题色 |

@@ -26,7 +26,7 @@ echo "私有包已输出: $out"
 if [[ "${1:-}" == "--install" ]]; then
   dev="${ADB_SERIAL:-}"
   if [[ -z "$dev" ]]; then
-    echo "用法提示：先 export ADB_SERIAL=192.168.0.104:5555（或 adb connect 后用 adb devices 查看）"
+    echo "用法提示：先 export ADB_SERIAL=<电视IP>:5555（或 adb connect 后用 adb devices 查看）"
     exit 1
   fi
   "$HOME/Library/Android/sdk/platform-tools/adb" -s "$dev" install -r "$out"
